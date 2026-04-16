@@ -115,6 +115,28 @@ if [[ -n "$REPLICAS" ]]; then
   echo "All replicas upgraded. Proceeding with primary $INSTANCE_ID..." >&2
 fi
 
+# --- Create manual snapshot before upgrade (rollback safety net) ---
+SNAPSHOT_ID="${INSTANCE_ID}-pre-upgrade-$(date +%Y%m%d%H%M%S)"
+echo "Creating pre-upgrade snapshot: $SNAPSHOT_ID ..." >&2
+
+aws rds create-db-snapshot \
+  "${REGION_ARGS[@]}" \
+  --db-instance-identifier "$INSTANCE_ID" \
+  --db-snapshot-identifier "$SNAPSHOT_ID" \
+  --output json > /dev/null 2>&1 || {
+  echo "ERROR: Failed to create pre-upgrade snapshot" >&2
+  exit 1
+}
+
+echo "Waiting for snapshot $SNAPSHOT_ID to complete..." >&2
+aws rds wait db-snapshot-available \
+  "${REGION_ARGS[@]}" \
+  --db-snapshot-identifier "$SNAPSHOT_ID" 2>&1 || {
+  echo "ERROR: Snapshot $SNAPSHOT_ID did not become available" >&2
+  exit 1
+}
+echo "Snapshot $SNAPSHOT_ID ready. Proceeding with upgrade..." >&2
+
 MODIFY_ARGS=(
   --db-instance-identifier "$INSTANCE_ID"
   --engine-version "$TARGET_VERSION"
@@ -168,7 +190,7 @@ while true; do
   echo "[$(date +%H:%M:%S)] Status: $INST_STATUS, Version: $INST_VERSION (elapsed: ${ELAPSED}s)" >&2
 
   if [[ "$INST_STATUS" == "available" && "$INST_VERSION" == "$TARGET_VERSION"* ]]; then
-    echo '{"instance_id":"'"$INSTANCE_ID"'","status":"COMPLETED","engine_version":"'"$INST_VERSION"'","elapsed_seconds":'"$ELAPSED"'}'
+    echo '{"instance_id":"'"$INSTANCE_ID"'","status":"COMPLETED","engine_version":"'"$INST_VERSION"'","elapsed_seconds":'"$ELAPSED"',"pre_upgrade_snapshot":"'"$SNAPSHOT_ID"'"}'
     exit 0
   fi
 
