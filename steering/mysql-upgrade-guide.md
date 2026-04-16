@@ -87,9 +87,12 @@ After upgrade, verify:
 - Delete the B/G deployment only after confirming the upgrade is successful
 
 ### In-Place
-- No automatic rollback
-- Use PITR to restore to pre-upgrade point
-- Requires automated backups enabled with sufficient retention
+- In-place upgrades are irreversible — there is no downgrade path
+- Rollback is only possible by restoring from a snapshot:
+  - **Manual snapshot**: Take a manual snapshot before upgrading (recommended). Restore from this snapshot to get back to MySQL 8.0.
+  - **Point-in-Time Recovery (PITR)**: Restore to a point before the upgrade started. Requires automated backups enabled with sufficient retention.
+- Both options create a new RDS instance — you must update application connection strings to point to the restored instance
+- Always take a manual snapshot immediately before starting an in-place upgrade
 
 ## Batch Upgrade Best Practices
 
