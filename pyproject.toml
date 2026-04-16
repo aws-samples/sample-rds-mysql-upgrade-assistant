@@ -1,0 +1,29 @@
+[project]
+name = "rds-mysql-upgrade-assistant"
+version = "0.1.0"
+description = "Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 → 8.4"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]>=1.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "hypothesis>=6.100",
+    "pytest-cov>=5.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.backends"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rds_upgrade_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

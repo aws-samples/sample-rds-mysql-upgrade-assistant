@@ -1,0 +1,30 @@
+# Batch Upgrade Configuration
+# Usage: ./scripts/batch/batch_upgrade.sh --config batch_config.yaml
+#
+# strategy: blue_green (default) | in_place
+#   blue_green — Creates Blue/Green deployment, minimal downtime, safe rollback
+#   in_place   — Direct version upgrade, causes downtime, no rollback
+#
+# source_param_group: If multiple instances share the same custom parameter group,
+#   the tool will only create one target parameter group and reuse it.
+#   If omitted, auto-detected from the instance.
+
+target_version: "8.4.0"
+target_param_family: "mysql8.4"
+concurrency: 3
+precheck_phase2: false
+cleanup_blue_after_switchover: true
+
+instances:
+  - instance_id: "prod-db-01"
+    secret_id: "prod/db01/credentials"
+    source_param_group: "prod-mysql80-custom"
+    strategy: "blue_green"
+  - instance_id: "prod-db-02"
+    secret_id: "prod/db02/credentials"
+    source_param_group: "prod-mysql80-custom"    # Same group — migrated only once
+    strategy: "blue_green"
+  - instance_id: "staging-db-01"
+    secret_id: "staging/db01/credentials"
+    source_param_group: "staging-mysql80"
+    strategy: "in_place"                          # Non-production, accept downtime

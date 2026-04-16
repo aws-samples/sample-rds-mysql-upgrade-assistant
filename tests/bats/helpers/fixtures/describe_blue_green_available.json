@@ -1,0 +1,9 @@
+{
+  "BlueGreenDeployments": [
+    {
+      "BlueGreenDeploymentIdentifier": "bgd-test123456",
+      "Status": "AVAILABLE",
+      "StatusDetails": "Blue/Green Deployment is available for switchover."
+    }
+  ]
+}

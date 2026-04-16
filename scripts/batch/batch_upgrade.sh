@@ -1,0 +1,408 @@
+#!/bin/bash
+# ============================================================
+# Batch RDS MySQL Upgrade Orchestrator
+# ============================================================
+#
+#  Copyright 2024 Amazon.com, Inc. or its affiliates.
+#  Licensed under the Apache License, Version 2.0
+#
+# Usage:
+#   ./batch_upgrade.sh --config <config.yaml> [--dry-run] [--resume]
+#                      [--concurrency <N>] [--region <region>]
+# ============================================================
+
+set -uo pipefail
+
+CONFIG_PATH=""
+DRY_RUN=false
+RESUME=false
+CONCURRENCY=1
+REGION=""
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+RED='\033[0;31m'; GREEN='\033[0;32m'
+YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
+log_info()  { echo -e "${GREEN}[INFO]${NC}  $(date +%H:%M:%S) $*"; }
+log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $(date +%H:%M:%S) $*"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $(date +%H:%M:%S) $*"; }
+log_step()  { echo -e "${BLUE}[STEP]${NC}  $(date +%H:%M:%S) $*"; }
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --config) CONFIG_PATH="$2"; shift 2 ;;
+    --dry-run) DRY_RUN=true; shift ;;
+    --resume) RESUME=true; shift ;;
+    --concurrency) CONCURRENCY="$2"; shift 2 ;;
+    --region) REGION="$2"; shift 2 ;;
+    *) echo "Unknown option: $1"; exit 1 ;;
+  esac
+done
+
+if [[ -z "$CONFIG_PATH" ]]; then
+  echo "Usage: $0 --config <config.yaml> [--dry-run] [--resume] [--concurrency <N>] [--region <region>]"
+  exit 1
+fi
+
+# --- Check prerequisites ---
+for cmd in aws jq; do
+  if ! command -v "$cmd" &>/dev/null; then
+    log_error "$cmd not found. Please install it."
+    exit 1
+  fi
+done
+
+# --- Parse YAML config (simple parser, no yq dependency) ---
+# Expects flat YAML with instances list
+parse_config() {
+  local config="$1"
+  # Extract top-level values
+  TARGET_VERSION=$(grep '^target_version:' "$config" | awk '{print $2}' | tr -d '"'"'")
+  TARGET_PARAM_FAMILY=$(grep '^target_param_family:' "$config" | awk '{print $2}' | tr -d '"'"'")
+  CONFIG_CONCURRENCY=$(grep '^concurrency:' "$config" | awk '{print $2}')
+  PRECHECK_PHASE2=$(grep '^precheck_phase2:' "$config" | awk '{print $2}')
+  CLEANUP_BLUE=$(grep '^cleanup_blue_after_switchover:' "$config" | awk '{print $2}')
+
+  [[ -n "$CONFIG_CONCURRENCY" ]] && CONCURRENCY="${CONCURRENCY:-$CONFIG_CONCURRENCY}"
+  PRECHECK_PHASE2="${PRECHECK_PHASE2:-false}"
+  CLEANUP_BLUE="${CLEANUP_BLUE:-true}"
+
+  # Extract instances (simple line-by-line parsing)
+  INSTANCE_IDS=()
+  INSTANCE_SECRETS=()
+  INSTANCE_PARAM_GROUPS=()
+  INSTANCE_STRATEGIES=()
+
+  local in_instances=false current_id="" current_secret="" current_pg="" current_strategy="blue_green"
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^instances: ]]; then in_instances=true; continue; fi
+    if [[ "$in_instances" == false ]]; then continue; fi
+    if [[ "$line" =~ ^[a-z] && ! "$line" =~ ^[[:space:]] ]]; then break; fi
+
+    if [[ "$line" =~ "- instance_id:" ]]; then
+      if [[ -n "$current_id" ]]; then
+        INSTANCE_IDS+=("$current_id")
+        INSTANCE_SECRETS+=("$current_secret")
+        INSTANCE_PARAM_GROUPS+=("$current_pg")
+        INSTANCE_STRATEGIES+=("$current_strategy")
+      fi
+      current_id=$(echo "$line" | sed 's/.*instance_id:[[:space:]]*//' | tr -d '"'"'")
+      current_secret="" current_pg="" current_strategy="blue_green"
+    elif [[ "$line" =~ "secret_id:" ]]; then
+      current_secret=$(echo "$line" | sed 's/.*secret_id:[[:space:]]*//' | tr -d '"'"'")
+    elif [[ "$line" =~ "source_param_group:" ]]; then
+      current_pg=$(echo "$line" | sed 's/.*source_param_group:[[:space:]]*//' | tr -d '"'"'")
+    elif [[ "$line" =~ "strategy:" ]]; then
+      current_strategy=$(echo "$line" | sed 's/.*strategy:[[:space:]]*//' | tr -d '"'"'")
+    fi
+  done < "$config"
+
+  # Last instance
+  if [[ -n "$current_id" ]]; then
+    INSTANCE_IDS+=("$current_id")
+    INSTANCE_SECRETS+=("$current_secret")
+    INSTANCE_PARAM_GROUPS+=("$current_pg")
+    INSTANCE_STRATEGIES+=("$current_strategy")
+  fi
+}
+
+parse_config "$CONFIG_PATH"
+TOTAL=${#INSTANCE_IDS[@]}
+
+if [[ "$TOTAL" -eq 0 ]]; then
+  log_error "No instances found in config"; exit 1
+fi
+
+REGION_ARGS=()
+[[ -n "$REGION" ]] && REGION_ARGS=(--region "$REGION")
+
+# --- State file ---
+STATE_DIR="$(dirname "$CONFIG_PATH")"
+STATE_FILE="${STATE_DIR}/batch_state_$(date +%Y%m%d_%H%M%S).json"
+
+if [[ "$RESUME" == "true" ]]; then
+  LATEST_STATE=$(ls -t "${STATE_DIR}"/batch_state_*.json 2>/dev/null | head -1)
+  if [[ -n "$LATEST_STATE" ]]; then
+    STATE_FILE="$LATEST_STATE"
+    log_info "Resuming from: $STATE_FILE"
+  fi
+fi
+
+init_state() {
+  local instances_json='{'
+  for ((i=0; i<TOTAL; i++)); do
+    [[ $i -gt 0 ]] && instances_json+=','
+    instances_json+='"'"${INSTANCE_IDS[$i]}"'":{"status":"PENDING"}'
+  done
+  instances_json+='}'
+  jq -n --arg id "upgrade_$(date +%Y%m%d_%H%M%S)" --argjson inst "$instances_json" \
+    '{batch_id: $id, started_at: (now | strftime("%Y-%m-%dT%H:%M:%SZ")), instances: $inst}' > "$STATE_FILE"
+}
+
+get_status() { jq -r --arg id "$1" '.instances[$id].status' "$STATE_FILE"; }
+
+set_status() {
+  local id="$1" status="$2" extra="${3:-}"
+  local tmp=$(mktemp)
+  if [[ -n "$extra" ]]; then
+    jq --arg id "$id" --arg s "$status" --arg e "$extra" \
+      '.instances[$id].status = $s | .instances[$id].detail = $e' "$STATE_FILE" > "$tmp"
+  else
+    jq --arg id "$id" --arg s "$status" '.instances[$id].status = $s' "$STATE_FILE" > "$tmp"
+  fi
+  mv "$tmp" "$STATE_FILE"
+}
+
+if [[ "$RESUME" != "true" || ! -f "$STATE_FILE" ]]; then
+  init_state
+fi
+
+# --- Parameter group dedup ---
+declare -A PARAM_GROUP_MAP  # source_pg -> target_pg name
+MIGRATED_GROUPS=()
+
+migrate_param_group_once() {
+  local source_pg="$1"
+  if [[ -z "$source_pg" ]]; then return; fi
+  if [[ -n "${PARAM_GROUP_MAP[$source_pg]:-}" ]]; then
+    log_info "Parameter group '$source_pg' already migrated to '${PARAM_GROUP_MAP[$source_pg]}'"
+    return
+  fi
+
+  local target_pg="${source_pg}-${TARGET_PARAM_FAMILY//./}"
+  log_step "Migrating parameter group: $source_pg → $target_pg (family: $TARGET_PARAM_FAMILY)"
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log_warn "[DRY RUN] Would migrate $source_pg → $target_pg"
+    PARAM_GROUP_MAP[$source_pg]="$target_pg"
+    return
+  fi
+
+  local migrate_script="$SCRIPT_DIR/params/migrate_param_group.sh"
+  if [[ -f "$migrate_script" ]]; then
+    "$migrate_script" -s "$source_pg" -t "$target_pg" -f "$TARGET_PARAM_FAMILY" "${REGION_ARGS[@]}" || {
+      log_warn "Parameter migration failed for $source_pg. Target group may already exist."
+    }
+  else
+    log_warn "migrate_param_group.sh not found. Skipping parameter migration."
+  fi
+  PARAM_GROUP_MAP[$source_pg]="$target_pg"
+}
+
+# --- Upgrade single instance ---
+upgrade_instance() {
+  local idx="$1"
+  local id="${INSTANCE_IDS[$idx]}"
+  local secret="${INSTANCE_SECRETS[$idx]}"
+  local source_pg="${INSTANCE_PARAM_GROUPS[$idx]}"
+  local strategy="${INSTANCE_STRATEGIES[$idx]}"
+
+  log_info "========== [$((idx+1))/$TOTAL] $id (strategy: $strategy) =========="
+
+  # Auto-detect source param group if not specified
+  if [[ -z "$source_pg" ]]; then
+    source_pg=$(aws rds describe-db-instances "${REGION_ARGS[@]}" \
+      --db-instance-identifier "$id" \
+      --query 'DBInstances[0].DBParameterGroups[0].DBParameterGroupName' --output text 2>/dev/null || echo "")
+  fi
+
+  # Step 1: Precheck
+  log_step "Step 1: Running precheck on $id"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log_warn "[DRY RUN] Would run precheck on $id"
+  else
+    local host
+    host=$(aws rds describe-db-instances "${REGION_ARGS[@]}" \
+      --db-instance-identifier "$id" \
+      --query 'DBInstances[0].Endpoint.Address' --output text 2>/dev/null || echo "")
+
+    if [[ -n "$host" && -n "$secret" ]]; then
+      local precheck_args=(-h "$host" --secret-id "$secret" --json)
+      [[ "$PRECHECK_PHASE2" == "true" ]] && precheck_args+=(--phase2)
+
+      local precheck_user
+      precheck_user=$(aws secretsmanager get-secret-value --secret-id "$secret" \
+        --query SecretString --output text 2>/dev/null | jq -r '.username // "admin"')
+
+      precheck_args+=(-u "$precheck_user")
+
+      PRECHECK_RESULT=$("$SCRIPT_DIR/precheck/mysql_precheck_run.sh" "${precheck_args[@]}" 2>/dev/null || echo '{"summary":{"errors":999}}')
+      PRECHECK_ERRORS=$(echo "$PRECHECK_RESULT" | jq -r '.summary.errors // 999')
+
+      if [[ "$PRECHECK_ERRORS" -gt 0 ]]; then
+        log_error "$id: Precheck found $PRECHECK_ERRORS error(s). Skipping."
+        set_status "$id" "SKIPPED" "Precheck: $PRECHECK_ERRORS error(s)"
+        return
+      fi
+      log_info "$id: Precheck passed"
+    else
+      log_warn "$id: Cannot run precheck (no endpoint or secret). Continuing..."
+    fi
+  fi
+
+  # Step 2: Migrate parameter group (dedup)
+  if [[ -n "$source_pg" && "$source_pg" != "default."* ]]; then
+    migrate_param_group_once "$source_pg"
+  fi
+  local target_pg="${PARAM_GROUP_MAP[$source_pg]:-}"
+
+  set_status "$id" "IN_PROGRESS"
+
+  # Step 3: Execute upgrade based on strategy
+  if [[ "$strategy" == "blue_green" ]]; then
+    upgrade_blue_green "$id" "$target_pg"
+  elif [[ "$strategy" == "in_place" ]]; then
+    upgrade_in_place "$id" "$target_pg"
+  else
+    log_error "$id: Unknown strategy '$strategy'"
+    set_status "$id" "FAILED" "Unknown strategy: $strategy"
+    return
+  fi
+}
+
+upgrade_blue_green() {
+  local id="$1" target_pg="$2"
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log_warn "[DRY RUN] Would create Blue/Green for $id"
+    set_status "$id" "COMPLETED" "DRY RUN"
+    return
+  fi
+
+  log_step "Step 3: Creating Blue/Green deployment for $id"
+  local bg_args=(--instance-id "$id" --target-version "$TARGET_VERSION")
+  [[ -n "$target_pg" ]] && bg_args+=(--target-param-group "$target_pg")
+  [[ -n "$REGION" ]] && bg_args+=(--region "$REGION")
+
+  BG_RESULT=$("$SCRIPT_DIR/upgrade/create_blue_green.sh" "${bg_args[@]}" 2>&1) || {
+    log_error "$id: Blue/Green creation failed: $BG_RESULT"
+    set_status "$id" "FAILED" "B/G creation failed"
+    return
+  }
+
+  DEPLOYMENT_ID=$(echo "$BG_RESULT" | jq -r '.deployment_id')
+  log_info "$id: Deployment created: $DEPLOYMENT_ID"
+
+  log_step "Step 4: Monitoring Blue/Green deployment"
+  "$SCRIPT_DIR/upgrade/monitor_blue_green.sh" --deployment-id "$DEPLOYMENT_ID" ${REGION:+--region "$REGION"} || {
+    log_error "$id: Blue/Green deployment failed"
+    set_status "$id" "FAILED" "B/G deployment failed"
+    return
+  }
+
+  log_step "Step 5: Executing switchover"
+  "$SCRIPT_DIR/upgrade/switchover_blue_green.sh" --deployment-id "$DEPLOYMENT_ID" ${REGION:+--region "$REGION"} || {
+    log_error "$id: Switchover failed"
+    set_status "$id" "FAILED" "Switchover failed"
+    return
+  }
+
+  # Step 6: Validate
+  log_step "Step 6: Post-upgrade validation"
+  "$SCRIPT_DIR/validate/post_upgrade_validate.sh" --instance-id "$id" ${REGION:+--region "$REGION"} --expected-version "$TARGET_VERSION" || {
+    log_warn "$id: Validation had issues"
+  }
+
+  # Step 7: Cleanup
+  if [[ "$CLEANUP_BLUE" == "true" ]]; then
+    log_step "Step 7: Cleaning up Blue/Green deployment"
+    "$SCRIPT_DIR/upgrade/cleanup_blue_green.sh" --deployment-id "$DEPLOYMENT_ID" ${REGION:+--region "$REGION"} --delete-source || {
+      log_warn "$id: Cleanup failed (non-critical)"
+    }
+  fi
+
+  set_status "$id" "COMPLETED"
+  log_info "$id: Upgrade completed successfully"
+}
+
+upgrade_in_place() {
+  local id="$1" target_pg="$2"
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log_warn "[DRY RUN] Would in-place upgrade $id"
+    set_status "$id" "COMPLETED" "DRY RUN"
+    return
+  fi
+
+  log_step "Step 3: In-place upgrade for $id"
+  local up_args=(--instance-id "$id" --target-version "$TARGET_VERSION" --apply-immediately)
+  [[ -n "$target_pg" ]] && up_args+=(--target-param-group "$target_pg")
+  [[ -n "$REGION" ]] && up_args+=(--region "$REGION")
+
+  "$SCRIPT_DIR/upgrade/in_place_upgrade.sh" "${up_args[@]}" || {
+    log_error "$id: In-place upgrade failed"
+    set_status "$id" "FAILED" "In-place upgrade failed"
+    return
+  }
+
+  log_step "Step 4: Post-upgrade validation"
+  "$SCRIPT_DIR/validate/post_upgrade_validate.sh" --instance-id "$id" ${REGION:+--region "$REGION"} --expected-version "$TARGET_VERSION" || {
+    log_warn "$id: Validation had issues"
+  }
+
+  set_status "$id" "COMPLETED"
+  log_info "$id: Upgrade completed successfully"
+}
+
+# --- Main execution ---
+log_info "============================================================"
+log_info "Batch RDS MySQL Upgrade"
+log_info "============================================================"
+log_info "Config:       $CONFIG_PATH"
+log_info "Target:       MySQL $TARGET_VERSION"
+log_info "Instances:    $TOTAL"
+log_info "Concurrency:  $CONCURRENCY"
+log_info "Dry run:      $DRY_RUN"
+log_info "State file:   $STATE_FILE"
+log_info "============================================================"
+
+ACTIVE_JOBS=0
+START_TIME=$(date +%s)
+
+for ((i=0; i<TOTAL; i++)); do
+  id="${INSTANCE_IDS[$i]}"
+  current_status=$(get_status "$id")
+
+  if [[ "$current_status" == "COMPLETED" || "$current_status" == "SKIPPED" ]]; then
+    log_info "$id: Already $current_status, skipping"
+    continue
+  fi
+
+  # Concurrency control
+  while [[ "$ACTIVE_JOBS" -ge "$CONCURRENCY" ]]; do
+    wait -n 2>/dev/null || true
+    ACTIVE_JOBS=$((ACTIVE_JOBS - 1))
+  done
+
+  if [[ "$CONCURRENCY" -gt 1 ]]; then
+    upgrade_instance "$i" &
+    ACTIVE_JOBS=$((ACTIVE_JOBS + 1))
+  else
+    upgrade_instance "$i"
+  fi
+done
+
+# Wait for remaining jobs
+wait
+
+ELAPSED=$(( $(date +%s) - START_TIME ))
+
+# --- Summary ---
+COMPLETED=$(jq '[.instances[] | select(.status == "COMPLETED")] | length' "$STATE_FILE")
+FAILED=$(jq '[.instances[] | select(.status == "FAILED")] | length' "$STATE_FILE")
+SKIPPED=$(jq '[.instances[] | select(.status == "SKIPPED")] | length' "$STATE_FILE")
+
+log_info "============================================================"
+log_info "Batch Upgrade Summary"
+log_info "============================================================"
+log_info "Total:     $TOTAL"
+log_info "Completed: $COMPLETED"
+log_info "Failed:    $FAILED"
+log_info "Skipped:   $SKIPPED"
+log_info "Duration:  ${ELAPSED}s"
+log_info "State:     $STATE_FILE"
+log_info "============================================================"
+
+if [[ "$FAILED" -gt 0 ]]; then
+  log_error "Failed instances:"
+  jq -r '.instances | to_entries[] | select(.value.status == "FAILED") | "  \(.key): \(.value.detail // "unknown")"' "$STATE_FILE"
+fi

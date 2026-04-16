@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "rds-mysql-upgrade": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory", "/path/to/rds-mysql-upgrade-assistant",
+        "python", "-m", "rds_upgrade_mcp.server"
+      ],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_DEFAULT_REGION": "us-east-1"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "awslabs.aws-documentation-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.aws-documentation-mcp-server@latest"],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}

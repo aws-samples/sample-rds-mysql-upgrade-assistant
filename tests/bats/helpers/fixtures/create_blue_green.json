@@ -1,0 +1,8 @@
+{
+  "BlueGreenDeployment": {
+    "BlueGreenDeploymentIdentifier": "bgd-test123456",
+    "BlueGreenDeploymentName": "bgd-prod-db-01-20240115103000",
+    "Status": "PROVISIONING",
+    "Source": "arn:aws:rds:us-east-1:123456789012:db:prod-db-01"
+  }
+}

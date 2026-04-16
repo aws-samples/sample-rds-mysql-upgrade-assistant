@@ -1,0 +1,9 @@
+{
+  "BlueGreenDeployments": [
+    {
+      "BlueGreenDeploymentIdentifier": "bgd-test123456",
+      "Status": "SWITCHOVER_COMPLETED",
+      "StatusDetails": "Switchover completed successfully."
+    }
+  ]
+}

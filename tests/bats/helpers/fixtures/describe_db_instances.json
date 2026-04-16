@@ -1,0 +1,44 @@
+{
+  "DBInstances": [
+    {
+      "DBInstanceIdentifier": "prod-db-01",
+      "Engine": "mysql",
+      "EngineVersion": "8.0.35",
+      "DBInstanceClass": "db.r6g.xlarge",
+      "MultiAZ": true,
+      "DBInstanceStatus": "available",
+      "Endpoint": {"Address": "prod-db-01.xxx.us-east-1.rds.amazonaws.com", "Port": 3306},
+      "DBParameterGroups": [{"DBParameterGroupName": "prod-mysql80", "ParameterApplyStatus": "in-sync"}],
+      "ReadReplicaDBInstanceIdentifiers": ["prod-db-01-replica"],
+      "ReadReplicaSourceDBInstanceIdentifier": null,
+      "DBInstanceArn": "arn:aws:rds:us-east-1:123456789012:db:prod-db-01",
+      "TagList": [{"Key": "env", "Value": "production"}, {"Key": "team", "Value": "platform"}]
+    },
+    {
+      "DBInstanceIdentifier": "dev-db-01",
+      "Engine": "mysql",
+      "EngineVersion": "8.0.35",
+      "DBInstanceClass": "db.t3.medium",
+      "MultiAZ": false,
+      "DBInstanceStatus": "available",
+      "Endpoint": {"Address": "dev-db-01.xxx.us-east-1.rds.amazonaws.com", "Port": 3306},
+      "DBParameterGroups": [{"DBParameterGroupName": "default.mysql8.0", "ParameterApplyStatus": "in-sync"}],
+      "ReadReplicaDBInstanceIdentifiers": [],
+      "ReadReplicaSourceDBInstanceIdentifier": null,
+      "DBInstanceArn": "arn:aws:rds:us-east-1:123456789012:db:dev-db-01",
+      "TagList": [{"Key": "env", "Value": "development"}]
+    },
+    {
+      "DBInstanceIdentifier": "pg-db-01",
+      "Engine": "postgres",
+      "EngineVersion": "15.4",
+      "DBInstanceClass": "db.r6g.large",
+      "MultiAZ": false,
+      "DBInstanceStatus": "available",
+      "Endpoint": {"Address": "pg-db-01.xxx.us-east-1.rds.amazonaws.com", "Port": 5432},
+      "DBParameterGroups": [{"DBParameterGroupName": "default.postgres15", "ParameterApplyStatus": "in-sync"}],
+      "ReadReplicaDBInstanceIdentifiers": [],
+      "TagList": []
+    }
+  ]
+}
