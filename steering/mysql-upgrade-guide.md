@@ -81,8 +81,10 @@ After upgrade, verify:
 ## Rollback
 
 ### Blue/Green
-- If blue environment still exists: switch back via AWS Console or CLI
-- If deleted: use Point-in-Time Recovery (PITR)
+- After switchover, the old blue instance still exists with a renamed identifier (e.g., `-old1` suffix)
+- A reverse switchover via the B/G deployment is NOT supported once switchover completes
+- To rollback: rename the old blue instance back to the original identifier (requires renaming the current primary first to avoid conflicts), or use Point-in-Time Recovery (PITR)
+- Delete the B/G deployment only after confirming the upgrade is successful
 
 ### In-Place
 - No automatic rollback

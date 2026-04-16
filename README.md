@@ -141,9 +141,10 @@ sudo apt install jq
 # Using IAM database authentication
 ./scripts/precheck/mysql_precheck_run.sh -h <endpoint> -u <iam_user> --iam
 
-# Using environment variable
-export MYSQL_PWD="mypassword"
+# Interactive password prompt (fallback)
 ./scripts/precheck/mysql_precheck_run.sh -h <endpoint> -u <user>
+
+# Note: Avoid using MYSQL_PWD — it is deprecated in MySQL 8.0 and considered insecure.
 ```
 
 ### 3. Migrate parameter group
