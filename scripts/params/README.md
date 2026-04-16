@@ -1,16 +1,16 @@
 # Parameter Group Migration
 
-This directory uses `migrate_param_group.sh` from [awslabs/rds-support-tools](https://github.com/awslabs/rds-support-tools/blob/main/rds-general/shell/migrate_param_group.sh).
+This directory uses `migrate_param_group.sh` from awslabs/rds-support-tools (Apache 2.0).
 
 ## Setup
 
-Download the script:
+Place `migrate_param_group.sh` into this directory and make it executable:
 
 ```bash
-curl -o scripts/params/migrate_param_group.sh \
-  https://raw.githubusercontent.com/awslabs/rds-support-tools/main/rds-general/shell/migrate_param_group.sh
 chmod +x scripts/params/migrate_param_group.sh
 ```
+
+The script is available from the [awslabs/rds-support-tools](https://github.com/awslabs/rds-support-tools) repository under `rds-general/shell/`.
 
 ## Usage
 
@@ -24,4 +24,4 @@ chmod +x scripts/params/migrate_param_group.sh
   -s my-mysql80-params -t my-mysql84-params -f mysql8.4
 ```
 
-See the [rds-support-tools README](https://github.com/awslabs/rds-support-tools/blob/main/rds-general/rds-general.README) for full documentation.
+See the rds-support-tools repository for full documentation.

@@ -100,7 +100,8 @@ MIGRATE_SCRIPT="$SCRIPT_DIR/migrate_param_group.sh"
 
 if [[ ! -f "$MIGRATE_SCRIPT" ]]; then
   echo "ERROR: migrate_param_group.sh not found at $SCRIPT_DIR"
-  echo "Download: curl -o $MIGRATE_SCRIPT https://raw.githubusercontent.com/awslabs/rds-support-tools/main/rds-general/shell/migrate_param_group.sh"
+  echo "Please place migrate_param_group.sh from awslabs/rds-support-tools into $SCRIPT_DIR"
+  echo "See scripts/params/README.md for setup instructions."
   exit 1
 fi
 
