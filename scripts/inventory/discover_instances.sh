@@ -52,7 +52,7 @@ RAW=$(aws rds describe-db-instances \
   --output json 2>&1)
 
 if [[ $? -ne 0 ]]; then
-  echo "ERROR: AWS API call failed: $RAW"; exit 1
+  echo "ERROR: AWS API call failed. Check credentials and region."; exit 1
 fi
 
 # --- Filter and format ---

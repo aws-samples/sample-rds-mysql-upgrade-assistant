@@ -57,7 +57,7 @@ PG_INFO=$(aws rds describe-db-instances \
   --output json 2>&1)
 
 if [[ $? -ne 0 ]]; then
-  echo "ERROR: Failed to describe instance '$INSTANCE_ID': $PG_INFO"
+  echo "ERROR: Failed to describe instance '$INSTANCE_ID'. Verify instance ID and permissions." >&2
   exit 1
 fi
 

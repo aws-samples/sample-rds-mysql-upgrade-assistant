@@ -13,6 +13,7 @@
 # ============================================================
 
 set -euo pipefail
+umask 077
 
 INSTANCE_ID=""
 HOST=""
@@ -57,7 +58,7 @@ INST_INFO=$(aws rds describe-db-instances \
   --output json 2>&1)
 
 if [[ $? -ne 0 ]]; then
-  add_check "engine_version" "FAIL" "Cannot describe instance: $INST_INFO"
+  add_check "engine_version" "FAIL" "Cannot describe instance. Verify instance ID and permissions."
 else
   ACTUAL_VERSION=$(echo "$INST_INFO" | jq -r '.DBInstances[0].EngineVersion')
   if [[ "$ACTUAL_VERSION" == "$EXPECTED_VERSION"* ]]; then

@@ -42,7 +42,7 @@ while true; do
     --output json 2>&1)
 
   if [[ $? -ne 0 ]]; then
-    echo "ERROR: Failed to describe deployment: $RESULT" >&2
+    echo "ERROR: Failed to describe deployment. Verify deployment ID and permissions." >&2
     exit 1
   fi
 

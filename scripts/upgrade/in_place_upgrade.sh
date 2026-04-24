@@ -43,6 +43,17 @@ if [[ -z "$INSTANCE_ID" || -z "$TARGET_VERSION" ]]; then
   exit 1
 fi
 
+# --- Input validation ---
+if [[ ! "$POLL_INTERVAL" =~ ^[0-9]+$ ]] || [[ "$POLL_INTERVAL" -lt 1 ]]; then
+  echo "ERROR: --poll-interval must be a positive integer" >&2; exit 1
+fi
+if [[ ! "$TIMEOUT" =~ ^[0-9]+$ ]] || [[ "$TIMEOUT" -lt 1 ]]; then
+  echo "ERROR: --timeout must be a positive integer" >&2; exit 1
+fi
+if [[ ! "$TARGET_VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+  echo "ERROR: Invalid --target-version format (expected X.Y or X.Y.Z)" >&2; exit 1
+fi
+
 # --- Check for read replicas and upgrade them first ---
 INST_JSON=$(aws rds describe-db-instances \
   "${REGION_ARGS[@]}" \
@@ -50,7 +61,7 @@ INST_JSON=$(aws rds describe-db-instances \
   --output json 2>&1)
 
 if [[ $? -ne 0 ]]; then
-  echo "ERROR: Instance '$INSTANCE_ID' not found: $INST_JSON" >&2
+  echo "ERROR: Instance '$INSTANCE_ID' not found. Verify instance ID and region." >&2
   exit 1
 fi
 
@@ -159,7 +170,7 @@ echo "Initiating in-place upgrade for $INSTANCE_ID to $TARGET_VERSION..." >&2
 RESULT=$(aws rds modify-db-instance "${MODIFY_ARGS[@]}" --output json 2>&1)
 
 if [[ $? -ne 0 ]]; then
-  echo "ERROR: Upgrade failed: $RESULT" >&2
+  echo "ERROR: Upgrade failed. Check instance status and IAM permissions." >&2
   exit 1
 fi
 

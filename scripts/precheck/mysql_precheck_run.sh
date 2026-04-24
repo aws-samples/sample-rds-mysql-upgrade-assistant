@@ -37,7 +37,8 @@ while [[ $# -gt 0 ]]; do
     -h) HOST="$2"; shift 2 ;;
     -u) USER="$2"; shift 2 ;;
     -P) PORT="$2"; shift 2 ;;
-    -p) PASSWORD="$2"; shift 2 ;;
+    -p) echo "WARNING: -p passes password via command line (visible in ps). Prefer --secret-id or --iam." >&2
+        PASSWORD="$2"; shift 2 ;;
     --secret-id) SECRET_ID="$2"; shift 2 ;;
     --iam) USE_IAM=true; shift ;;
     --phase2) RUN_PHASE2=true; shift ;;
@@ -70,7 +71,7 @@ if [[ -n "$SECRET_ID" ]]; then
   fi
   SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "$SECRET_ID" --query SecretString --output text 2>&1)
   if [[ $? -ne 0 ]]; then
-    echo "ERROR: Failed to retrieve secret '$SECRET_ID': $SECRET_JSON"; exit 1
+    echo "ERROR: Failed to retrieve secret (check secret ID, IAM permissions, and region)." >&2; exit 1
   fi
   PASSWORD=$(echo "$SECRET_JSON" | jq -r '.password // empty')
   if [[ -z "$PASSWORD" ]]; then
@@ -81,10 +82,12 @@ elif [[ "$USE_IAM" == "true" ]]; then
     echo "ERROR: AWS CLI not found (required for IAM auth)"; exit 1
   fi
   echo "Generating IAM auth token for $HOST:$PORT..." >&2
-  PASSWORD=$(aws rds generate-db-auth-token --hostname "$HOST" --port "$PORT" --username "$USER" 2>&1)
+  TOKEN_OUTPUT=$(aws rds generate-db-auth-token --hostname "$HOST" --port "$PORT" --username "$USER" 2>&1)
   if [[ $? -ne 0 ]]; then
-    echo "ERROR: Failed to generate IAM auth token: $PASSWORD"; exit 1
+    echo "ERROR: Failed to generate IAM auth token (check IAM policy and network connectivity)." >&2; exit 1
   fi
+  PASSWORD="$TOKEN_OUTPUT"
+  unset TOKEN_OUTPUT
 elif [[ -z "$PASSWORD" && -n "${MYSQL_PWD:-}" ]]; then
   PASSWORD="$MYSQL_PWD"
 fi

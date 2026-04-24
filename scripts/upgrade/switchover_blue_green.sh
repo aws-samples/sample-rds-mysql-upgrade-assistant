@@ -40,7 +40,7 @@ RESULT=$(aws rds switchover-blue-green-deployment \
   --output json 2>&1)
 
 if [[ $? -ne 0 ]]; then
-  echo "ERROR: Switchover failed: $RESULT" >&2
+  echo "ERROR: Switchover failed. Check deployment status and IAM permissions." >&2
   exit 1
 fi
 

@@ -40,7 +40,7 @@ INST_JSON=$(aws rds describe-db-instances \
   --output json 2>&1)
 
 if [[ $? -ne 0 ]]; then
-  echo "ERROR: Instance '$INSTANCE_ID' not found: $INST_JSON" >&2
+  echo "ERROR: Instance '$INSTANCE_ID' not found. Verify instance ID and region." >&2
   exit 1
 fi
 
@@ -69,7 +69,7 @@ RESULT=$(aws rds create-blue-green-deployment \
   --output json 2>&1)
 
 if [[ $? -ne 0 ]]; then
-  echo "ERROR: Failed to create Blue/Green deployment: $RESULT" >&2
+  echo "ERROR: Failed to create Blue/Green deployment. Check instance eligibility and IAM permissions." >&2
   exit 1
 fi
 
