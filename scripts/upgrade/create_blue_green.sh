@@ -33,39 +33,63 @@ if [[ -z "$INSTANCE_ID" || -z "$TARGET_VERSION" || -z "$TARGET_PARAM_GROUP" ]]; 
   exit 1
 fi
 
-# Get source ARN and check eligibility
+# Get source ARN — try instance first, then cluster (Multi-AZ DB Cluster)
+SOURCE_ARN=""
+IS_CLUSTER=false
+
 INST_JSON=$(aws rds describe-db-instances \
   ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --db-instance-identifier "$INSTANCE_ID" \
-  --output json 2>&1)
+  --output json 2>/dev/null) && {
+  SOURCE_ARN=$(echo "$INST_JSON" | jq -r '.DBInstances[0].DBInstanceArn')
 
-if [[ $? -ne 0 ]]; then
-  echo "ERROR: Instance '$INSTANCE_ID' not found. Verify instance ID and region." >&2
-  exit 1
-fi
+  # Check for cross-Region read replicas (Blue/Green not supported)
+  CROSS_REGION_REPLICAS=$(echo "$INST_JSON" | jq -r '
+    [.DBInstances[0].ReadReplicaDBInstanceIdentifiers[]?
+     | select(contains(":"))] | length')
 
-SOURCE_ARN=$(echo "$INST_JSON" | jq -r '.DBInstances[0].DBInstanceArn')
+  if [[ "$CROSS_REGION_REPLICAS" -gt 0 ]]; then
+    echo "ERROR: Instance '$INSTANCE_ID' has cross-Region read replicas." >&2
+    echo "Blue/Green deployments are not supported for instances with cross-Region replicas." >&2
+    echo "Use in-place upgrade instead: ./in_place_upgrade.sh --instance-id $INSTANCE_ID --target-version $TARGET_VERSION" >&2
+    exit 1
+  fi
+}
 
-# Check for cross-Region read replicas (Blue/Green not supported)
-CROSS_REGION_REPLICAS=$(echo "$INST_JSON" | jq -r '
-  [.DBInstances[0].ReadReplicaDBInstanceIdentifiers[]?
-   | select(contains(":"))] | length')
+# Fallback: try as Multi-AZ DB Cluster
+if [[ -z "$SOURCE_ARN" || "$SOURCE_ARN" == "null" ]]; then
+  CLUSTER_JSON=$(aws rds describe-db-clusters \
+    ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+    --db-cluster-identifier "$INSTANCE_ID" \
+    --output json 2>&1)
 
-if [[ "$CROSS_REGION_REPLICAS" -gt 0 ]]; then
-  echo "ERROR: Instance '$INSTANCE_ID' has cross-Region read replicas." >&2
-  echo "Blue/Green deployments are not supported for instances with cross-Region replicas." >&2
-  echo "Use in-place upgrade instead: ./in_place_upgrade.sh --instance-id $INSTANCE_ID --target-version $TARGET_VERSION" >&2
-  exit 1
+  if [[ $? -ne 0 ]]; then
+    echo "ERROR: '$INSTANCE_ID' not found as instance or cluster. Verify identifier and region." >&2
+    exit 1
+  fi
+
+  SOURCE_ARN=$(echo "$CLUSTER_JSON" | jq -r '.DBClusters[0].DBClusterArn')
+  IS_CLUSTER=true
+  echo "Detected Multi-AZ DB Cluster: $INSTANCE_ID" >&2
 fi
 
 DEPLOYMENT_NAME="bgd-${INSTANCE_ID}-$(date +%Y%m%d%H%M%S)"
 
+BG_ARGS=(
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"}
+  --blue-green-deployment-name "$DEPLOYMENT_NAME"
+  --source "$SOURCE_ARN"
+  --target-engine-version "$TARGET_VERSION"
+)
+
+if [[ "$IS_CLUSTER" == "true" ]]; then
+  BG_ARGS+=(--target-db-cluster-parameter-group-name "$TARGET_PARAM_GROUP")
+else
+  BG_ARGS+=(--target-db-parameter-group-name "$TARGET_PARAM_GROUP")
+fi
+
 RESULT=$(aws rds create-blue-green-deployment \
-  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
-  --blue-green-deployment-name "$DEPLOYMENT_NAME" \
-  --source "$SOURCE_ARN" \
-  --target-engine-version "$TARGET_VERSION" \
-  --target-db-parameter-group-name "$TARGET_PARAM_GROUP" \
+  "${BG_ARGS[@]}" \
   --output json 2>&1)
 
 if [[ $? -ne 0 ]]; then
