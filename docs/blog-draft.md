@@ -104,8 +104,8 @@ To use this solution, you need:
 Clone the project repository:
 
 ```bash
-git clone https://github.com/aws-samples/rds-mysql-upgrade-assistant.git
-cd rds-mysql-upgrade-assistant
+git clone ssh://git.amazon.com/pkg/Rds-Mysql-Upgrade-Assistant
+cd Rds-Mysql-Upgrade-Assistant
 ```
 
 ### Install Kiro

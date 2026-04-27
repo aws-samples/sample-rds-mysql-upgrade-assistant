@@ -123,6 +123,13 @@ sudo apt install jq
 
 ## Quick Start
 
+### 0. Clone the repository
+
+```bash
+git clone ssh://git.amazon.com/pkg/Rds-Mysql-Upgrade-Assistant
+cd Rds-Mysql-Upgrade-Assistant
+```
+
 ### 1. Discover MySQL 8.0 instances
 
 ```bash
