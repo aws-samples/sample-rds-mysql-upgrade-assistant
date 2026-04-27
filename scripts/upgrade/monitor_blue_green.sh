@@ -37,7 +37,7 @@ START_TIME=$(date +%s)
 
 while true; do
   RESULT=$(aws rds describe-blue-green-deployments \
-    "${REGION_ARGS[@]}" \
+    ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
     --blue-green-deployment-identifier "$DEPLOYMENT_ID" \
     --output json 2>&1)
 

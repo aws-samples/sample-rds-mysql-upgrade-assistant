@@ -35,7 +35,7 @@ fi
 
 # Get source ARN and check eligibility
 INST_JSON=$(aws rds describe-db-instances \
-  "${REGION_ARGS[@]}" \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --db-instance-identifier "$INSTANCE_ID" \
   --output json 2>&1)
 
@@ -61,7 +61,7 @@ fi
 DEPLOYMENT_NAME="bgd-${INSTANCE_ID}-$(date +%Y%m%d%H%M%S)"
 
 RESULT=$(aws rds create-blue-green-deployment \
-  "${REGION_ARGS[@]}" \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --blue-green-deployment-name "$DEPLOYMENT_NAME" \
   --source "$SOURCE_ARN" \
   --target-engine-version "$TARGET_VERSION" \

@@ -47,7 +47,7 @@ fi
 
 # --- Discover instances ---
 RAW=$(aws rds describe-db-instances \
-  "${REGION_ARGS[@]}" \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --filters "Name=engine,Values=mysql" \
   --output json 2>&1)
 
@@ -77,7 +77,7 @@ RESULT=$(echo "$RAW" | jq --arg prefix "$VERSION_PREFIX" --arg region "$EFFECTIV
   ]')
 
 # --- Apply tag filters ---
-for tag_filter in "${TAGS[@]}"; do
+for tag_filter in ${TAGS[@]+"${TAGS[@]}"}; do
   KEY="${tag_filter%%=*}"
   VALUE="${tag_filter#*=}"
   RESULT=$(echo "$RESULT" | jq --arg k "$KEY" --arg v "$VALUE" '

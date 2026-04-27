@@ -51,7 +51,7 @@ fi
 
 # --- Get current parameter group ---
 PG_INFO=$(aws rds describe-db-instances \
-  "${REGION_ARGS[@]}" \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --db-instance-identifier "$INSTANCE_ID" \
   --query 'DBInstances[0].DBParameterGroups[0]' \
   --output json 2>&1)

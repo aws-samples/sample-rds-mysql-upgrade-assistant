@@ -53,7 +53,7 @@ add_check() {
 
 # --- Check 1: Engine version ---
 INST_INFO=$(aws rds describe-db-instances \
-  "${REGION_ARGS[@]}" \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --db-instance-identifier "$INSTANCE_ID" \
   --output json 2>&1)
 
@@ -91,7 +91,7 @@ else
     ALL_HEALTHY=true
     for REPLICA in $REPLICAS; do
       REP_STATUS=$(aws rds describe-db-instances \
-        "${REGION_ARGS[@]}" \
+        ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
         --db-instance-identifier "$REPLICA" \
         --query 'DBInstances[0].DBInstanceStatus' --output text 2>/dev/null || echo "unknown")
       if [[ "$REP_STATUS" != "available" ]]; then ALL_HEALTHY=false; fi

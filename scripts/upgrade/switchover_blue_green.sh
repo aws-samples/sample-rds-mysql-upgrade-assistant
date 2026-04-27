@@ -34,7 +34,7 @@ fi
 echo "Initiating switchover for deployment: $DEPLOYMENT_ID" >&2
 
 RESULT=$(aws rds switchover-blue-green-deployment \
-  "${REGION_ARGS[@]}" \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --blue-green-deployment-identifier "$DEPLOYMENT_ID" \
   --switchover-timeout "$TIMEOUT" \
   --output json 2>&1)
@@ -52,7 +52,7 @@ MAX_WAIT=600
 
 while true; do
   STATUS_RESULT=$(aws rds describe-blue-green-deployments \
-    "${REGION_ARGS[@]}" \
+    ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
     --blue-green-deployment-identifier "$DEPLOYMENT_ID" \
     --output json 2>&1)
 

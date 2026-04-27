@@ -37,9 +37,9 @@ if [[ "$DELETE_SOURCE" == "true" ]]; then
 fi
 
 RESULT=$(aws rds delete-blue-green-deployment \
-  "${REGION_ARGS[@]}" \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --blue-green-deployment-identifier "$DEPLOYMENT_ID" \
-  "${DELETE_ARGS[@]}" \
+  ${DELETE_ARGS[@]+"${DELETE_ARGS[@]}"} \
   --output json 2>&1)
 
 if [[ $? -ne 0 ]]; then

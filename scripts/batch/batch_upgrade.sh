@@ -179,7 +179,7 @@ migrate_param_group_once() {
 
   local migrate_script="$SCRIPT_DIR/params/migrate_param_group.sh"
   if [[ -f "$migrate_script" ]]; then
-    "$migrate_script" -s "$source_pg" -t "$target_pg" -f "$TARGET_PARAM_FAMILY" "${REGION_ARGS[@]}" || {
+    "$migrate_script" -s "$source_pg" -t "$target_pg" -f "$TARGET_PARAM_FAMILY" ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} || {
       log_warn "Parameter migration failed for $source_pg. Target group may already exist."
     }
   else
@@ -200,7 +200,7 @@ upgrade_instance() {
 
   # Auto-detect source param group if not specified
   if [[ -z "$source_pg" ]]; then
-    source_pg=$(aws rds describe-db-instances "${REGION_ARGS[@]}" \
+    source_pg=$(aws rds describe-db-instances ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
       --db-instance-identifier "$id" \
       --query 'DBInstances[0].DBParameterGroups[0].DBParameterGroupName' --output text 2>/dev/null || echo "")
   fi
@@ -211,7 +211,7 @@ upgrade_instance() {
     log_warn "[DRY RUN] Would run precheck on $id"
   else
     local host
-    host=$(aws rds describe-db-instances "${REGION_ARGS[@]}" \
+    host=$(aws rds describe-db-instances ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
       --db-instance-identifier "$id" \
       --query 'DBInstances[0].Endpoint.Address' --output text 2>/dev/null || echo "")
 

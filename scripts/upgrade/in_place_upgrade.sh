@@ -56,7 +56,7 @@ fi
 
 # --- Check for read replicas and upgrade them first ---
 INST_JSON=$(aws rds describe-db-instances \
-  "${REGION_ARGS[@]}" \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --db-instance-identifier "$INSTANCE_ID" \
   --output json 2>&1)
 
@@ -71,7 +71,7 @@ if [[ -n "$REPLICAS" ]]; then
   echo "Instance $INSTANCE_ID has read replicas. Upgrading replicas first..." >&2
   for REPLICA in $REPLICAS; do
     REPLICA_VERSION=$(aws rds describe-db-instances \
-      "${REGION_ARGS[@]}" \
+      ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
       --db-instance-identifier "$REPLICA" \
       --query 'DBInstances[0].EngineVersion' --output text 2>/dev/null || echo "unknown")
 
@@ -86,7 +86,7 @@ if [[ -n "$REPLICAS" ]]; then
       --db-instance-identifier "$REPLICA"
       --engine-version "$TARGET_VERSION"
       --allow-major-version-upgrade
-      "${REGION_ARGS[@]}"
+      ${REGION_ARGS[@]+"${REGION_ARGS[@]}"}
     )
     [[ -n "$TARGET_PARAM_GROUP" ]] && REPLICA_MODIFY_ARGS+=(--db-parameter-group-name "$TARGET_PARAM_GROUP")
     [[ "$APPLY_IMMEDIATELY" == "true" ]] && REPLICA_MODIFY_ARGS+=(--apply-immediately)
@@ -101,7 +101,7 @@ if [[ -n "$REPLICAS" ]]; then
       local_start=$(date +%s)
       while true; do
         REP_STATUS=$(aws rds describe-db-instances \
-          "${REGION_ARGS[@]}" \
+          ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
           --db-instance-identifier "$REPLICA" \
           --query 'DBInstances[0].[DBInstanceStatus,EngineVersion]' \
           --output text 2>&1)
@@ -131,7 +131,7 @@ SNAPSHOT_ID="${INSTANCE_ID}-pre-upgrade-$(date +%Y%m%d%H%M%S)"
 echo "Creating pre-upgrade snapshot: $SNAPSHOT_ID ..." >&2
 
 aws rds create-db-snapshot \
-  "${REGION_ARGS[@]}" \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --db-instance-identifier "$INSTANCE_ID" \
   --db-snapshot-identifier "$SNAPSHOT_ID" \
   --output json > /dev/null 2>&1 || {
@@ -141,7 +141,7 @@ aws rds create-db-snapshot \
 
 echo "Waiting for snapshot $SNAPSHOT_ID to complete..." >&2
 aws rds wait db-snapshot-available \
-  "${REGION_ARGS[@]}" \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --db-snapshot-identifier "$SNAPSHOT_ID" 2>&1 || {
   echo "ERROR: Snapshot $SNAPSHOT_ID did not become available" >&2
   exit 1
@@ -152,7 +152,7 @@ MODIFY_ARGS=(
   --db-instance-identifier "$INSTANCE_ID"
   --engine-version "$TARGET_VERSION"
   --allow-major-version-upgrade
-  "${REGION_ARGS[@]}"
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"}
 )
 
 if [[ -n "$TARGET_PARAM_GROUP" ]]; then
@@ -189,7 +189,7 @@ START_TIME=$(date +%s)
 
 while true; do
   STATUS=$(aws rds describe-db-instances \
-    "${REGION_ARGS[@]}" \
+    ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
     --db-instance-identifier "$INSTANCE_ID" \
     --query 'DBInstances[0].[DBInstanceStatus,EngineVersion]' \
     --output text 2>&1)
