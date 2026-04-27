@@ -57,27 +57,26 @@ fi
 # --- Detect instance vs cluster ---
 IS_CLUSTER=false
 
-INST_JSON=$(aws rds describe-db-instances \
+if aws rds describe-db-instances \
   ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --db-instance-identifier "$INSTANCE_ID" \
-  --output json 2>/dev/null) || true
-
-if echo "$INST_JSON" | jq -e '.DBInstances[0]' > /dev/null 2>&1; then
+  --query 'DBInstances[0].DBInstanceIdentifier' \
+  --output text > /dev/null 2>&1; then
   IS_CLUSTER=false
-else
-  # Try as Multi-AZ DB Cluster
-  CLUSTER_JSON=$(aws rds describe-db-clusters \
+  INST_JSON=$(aws rds describe-db-instances \
     ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
-    --db-cluster-identifier "$INSTANCE_ID" \
-    --output json 2>&1)
-
-  if [[ $? -ne 0 ]]; then
-    echo "ERROR: '$INSTANCE_ID' not found as instance or cluster." >&2
-    exit 1
-  fi
-
+    --db-instance-identifier "$INSTANCE_ID" \
+    --output json)
+elif aws rds describe-db-clusters \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+  --db-cluster-identifier "$INSTANCE_ID" \
+  --query 'DBClusters[0].DBClusterIdentifier' \
+  --output text > /dev/null 2>&1; then
   IS_CLUSTER=true
   echo "Detected Multi-AZ DB Cluster: $INSTANCE_ID" >&2
+else
+  echo "ERROR: '$INSTANCE_ID' not found as instance or cluster." >&2
+  exit 1
 fi
 
 # ============================================================
