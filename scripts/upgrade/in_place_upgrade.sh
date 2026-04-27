@@ -54,16 +54,131 @@ if [[ ! "$TARGET_VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
   echo "ERROR: Invalid --target-version format (expected X.Y or X.Y.Z)" >&2; exit 1
 fi
 
-# --- Check for read replicas and upgrade them first ---
+# --- Detect instance vs cluster ---
+IS_CLUSTER=false
+
 INST_JSON=$(aws rds describe-db-instances \
   ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --db-instance-identifier "$INSTANCE_ID" \
-  --output json 2>&1)
+  --output json 2>/dev/null) || true
 
-if [[ $? -ne 0 ]]; then
-  echo "ERROR: Instance '$INSTANCE_ID' not found. Verify instance ID and region." >&2
-  exit 1
+if echo "$INST_JSON" | jq -e '.DBInstances[0]' > /dev/null 2>&1; then
+  IS_CLUSTER=false
+else
+  # Try as Multi-AZ DB Cluster
+  CLUSTER_JSON=$(aws rds describe-db-clusters \
+    ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+    --db-cluster-identifier "$INSTANCE_ID" \
+    --output json 2>&1)
+
+  if [[ $? -ne 0 ]]; then
+    echo "ERROR: '$INSTANCE_ID' not found as instance or cluster." >&2
+    exit 1
+  fi
+
+  IS_CLUSTER=true
+  echo "Detected Multi-AZ DB Cluster: $INSTANCE_ID" >&2
 fi
+
+# ============================================================
+# Cluster upgrade path
+# ============================================================
+if [[ "$IS_CLUSTER" == "true" ]]; then
+
+  # --- Create cluster snapshot before upgrade ---
+  SNAPSHOT_ID="${INSTANCE_ID}-pre-upgrade-$(date +%Y%m%d%H%M%S)"
+  echo "Creating pre-upgrade cluster snapshot: $SNAPSHOT_ID ..." >&2
+
+  aws rds create-db-cluster-snapshot \
+    ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+    --db-cluster-identifier "$INSTANCE_ID" \
+    --db-cluster-snapshot-identifier "$SNAPSHOT_ID" \
+    --output json > /dev/null 2>&1 || {
+    echo "ERROR: Failed to create pre-upgrade cluster snapshot" >&2
+    exit 1
+  }
+
+  echo "Waiting for cluster snapshot $SNAPSHOT_ID ..." >&2
+  aws rds wait db-cluster-snapshot-available \
+    ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+    --db-cluster-snapshot-identifier "$SNAPSHOT_ID" 2>&1 || {
+    echo "ERROR: Cluster snapshot did not become available" >&2
+    exit 1
+  }
+  echo "Snapshot $SNAPSHOT_ID ready. Proceeding with upgrade..." >&2
+
+  # --- Modify cluster ---
+  MODIFY_ARGS=(
+    --db-cluster-identifier "$INSTANCE_ID"
+    --engine-version "$TARGET_VERSION"
+    --allow-major-version-upgrade
+    ${REGION_ARGS[@]+"${REGION_ARGS[@]}"}
+  )
+
+  if [[ -n "$TARGET_PARAM_GROUP" ]]; then
+    MODIFY_ARGS+=(--db-cluster-parameter-group-name "$TARGET_PARAM_GROUP")
+  fi
+
+  if [[ "$APPLY_IMMEDIATELY" == "true" ]]; then
+    MODIFY_ARGS+=(--apply-immediately)
+  else
+    echo "WARNING: Upgrade will apply during next maintenance window. Use --apply-immediately to upgrade now." >&2
+  fi
+
+  echo "Initiating in-place upgrade for cluster $INSTANCE_ID to $TARGET_VERSION..." >&2
+
+  RESULT=$(aws rds modify-db-cluster "${MODIFY_ARGS[@]}" --output json 2>&1)
+
+  if [[ $? -ne 0 ]]; then
+    echo "ERROR: Cluster upgrade failed. Check status and IAM permissions." >&2
+    exit 1
+  fi
+
+  if [[ "$APPLY_IMMEDIATELY" != "true" ]]; then
+    echo "$RESULT" | jq '{
+      cluster_id: .DBCluster.DBClusterIdentifier,
+      status: "PENDING_MAINTENANCE_WINDOW",
+      target_version: "'"$TARGET_VERSION"'"
+    }'
+    exit 0
+  fi
+
+  # --- Poll cluster until upgrade completes ---
+  echo "Waiting for cluster upgrade to complete..." >&2
+  START_TIME=$(date +%s)
+
+  while true; do
+    STATUS=$(aws rds describe-db-clusters \
+      ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+      --db-cluster-identifier "$INSTANCE_ID" \
+      --query 'DBClusters[0].[Status,EngineVersion]' \
+      --output text 2>&1)
+
+    CLUSTER_STATUS=$(echo "$STATUS" | awk '{print $1}')
+    CLUSTER_VERSION=$(echo "$STATUS" | awk '{print $2}')
+    ELAPSED=$(( $(date +%s) - START_TIME ))
+
+    echo "[$(date +%H:%M:%S)] Cluster status: $CLUSTER_STATUS, Version: $CLUSTER_VERSION (elapsed: ${ELAPSED}s)" >&2
+
+    if [[ "$CLUSTER_STATUS" == "available" && "$CLUSTER_VERSION" == "$TARGET_VERSION"* ]]; then
+      echo '{"cluster_id":"'"$INSTANCE_ID"'","status":"COMPLETED","engine_version":"'"$CLUSTER_VERSION"'","elapsed_seconds":'"$ELAPSED"',"pre_upgrade_snapshot":"'"$SNAPSHOT_ID"'"}'
+      exit 0
+    fi
+
+    if [[ "$ELAPSED" -ge "$TIMEOUT" ]]; then
+      echo "ERROR: Timeout after ${TIMEOUT}s. Status: $CLUSTER_STATUS, Version: $CLUSTER_VERSION" >&2
+      exit 1
+    fi
+
+    sleep "$POLL_INTERVAL"
+  done
+fi
+
+# ============================================================
+# Instance upgrade path (original logic)
+# ============================================================
+
+# --- Check for read replicas and upgrade them first ---
 
 REPLICAS=$(echo "$INST_JSON" | jq -r '.DBInstances[0].ReadReplicaDBInstanceIdentifiers[]?' 2>/dev/null)
 
