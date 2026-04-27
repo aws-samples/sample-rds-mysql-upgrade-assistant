@@ -217,7 +217,22 @@ Proceed with the upgrade:
 
 For large-scale upgrades, use the batch orchestrator directly:
 
-1. Create a batch configuration file:
+1. Auto-generate a batch configuration from your current instances:
+
+```bash
+./scripts/batch/generate_config.sh \
+  --secret-prefix "prod/rds/" \
+  --tag "env=production" \
+  --output batch_config.yaml
+```
+
+The generator discovers all MySQL 8.0 instances and automatically assigns the correct upgrade strategy:
+- **Multi-AZ DB Clusters** → `in_place` (Blue/Green not supported)
+- **Instances with cross-region replicas** → `in_place` (Blue/Green not supported)
+- **Standard instances** → `blue_green` (recommended)
+- **Read replicas** → skipped (upgraded with their primary)
+
+Review and adjust the generated config. A typical output looks like:
 
 ```yaml
 target_version: "8.4.0"

@@ -170,9 +170,30 @@ cd Rds-Mysql-Upgrade-Assistant
 
 ### 5. Batch upgrade (100+ instances)
 
+Auto-generate a batch config from your current instances:
+
 ```bash
-./scripts/batch/batch_upgrade.sh --config examples/batch_config.yaml --dry-run  # validate first
-./scripts/batch/batch_upgrade.sh --config examples/batch_config.yaml --concurrency 3
+# Generate config with auto-detected strategies
+./scripts/batch/generate_config.sh --output batch_config.yaml
+
+# With Secrets Manager prefix and tag filter
+./scripts/batch/generate_config.sh \
+  --secret-prefix "prod/rds/" \
+  --tag "env=production" \
+  --output batch_config.yaml
+```
+
+The generator automatically:
+- Detects Multi-AZ DB Clusters → assigns `in_place` (Blue/Green not supported)
+- Detects cross-region replicas → assigns `in_place`
+- Skips read replicas (handled with their primary)
+- Standard instances → assigns `blue_green`
+
+Review and edit the generated config, then run:
+
+```bash
+./scripts/batch/batch_upgrade.sh --config batch_config.yaml --dry-run  # validate first
+./scripts/batch/batch_upgrade.sh --config batch_config.yaml --concurrency 3
 ```
 
 ## Using with Kiro
