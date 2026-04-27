@@ -184,53 +184,62 @@ REPLICAS=$(echo "$INST_JSON" | jq -r '.DBInstances[0].ReadReplicaDBInstanceIdent
 if [[ -n "$REPLICAS" ]]; then
   echo "Instance $INSTANCE_ID has read replicas. Upgrading replicas first..." >&2
   for REPLICA in $REPLICAS; do
+    # Handle cross-region replicas (ARN format: arn:aws:rds:<region>:<account>:db:<id>)
+    REPLICA_REGION_ARGS=(${REGION_ARGS[@]+"${REGION_ARGS[@]}"})
+    REPLICA_ID="$REPLICA"
+    if [[ "$REPLICA" == arn:* ]]; then
+      REPLICA_REGION=$(echo "$REPLICA" | cut -d: -f4)
+      REPLICA_ID=$(echo "$REPLICA" | cut -d: -f7)
+      REPLICA_REGION_ARGS=(--region "$REPLICA_REGION")
+      echo "  Cross-region replica detected: $REPLICA_ID in $REPLICA_REGION" >&2
+    fi
+
     REPLICA_VERSION=$(aws rds describe-db-instances \
-      ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
-      --db-instance-identifier "$REPLICA" \
+      "${REPLICA_REGION_ARGS[@]}" \
+      --db-instance-identifier "$REPLICA_ID" \
       --query 'DBInstances[0].EngineVersion' --output text 2>/dev/null || echo "unknown")
 
     if [[ "$REPLICA_VERSION" == "$TARGET_VERSION"* ]]; then
-      echo "  Replica $REPLICA already at $REPLICA_VERSION, skipping." >&2
+      echo "  Replica $REPLICA_ID already at $REPLICA_VERSION, skipping." >&2
       continue
     fi
 
-    echo "  Upgrading replica $REPLICA ($REPLICA_VERSION → $TARGET_VERSION)..." >&2
+    echo "  Upgrading replica $REPLICA_ID ($REPLICA_VERSION → $TARGET_VERSION)..." >&2
 
     REPLICA_MODIFY_ARGS=(
-      --db-instance-identifier "$REPLICA"
+      --db-instance-identifier "$REPLICA_ID"
       --engine-version "$TARGET_VERSION"
       --allow-major-version-upgrade
-      ${REGION_ARGS[@]+"${REGION_ARGS[@]}"}
+      "${REPLICA_REGION_ARGS[@]}"
     )
-    [[ -n "$TARGET_PARAM_GROUP" ]] && REPLICA_MODIFY_ARGS+=(--db-parameter-group-name "$TARGET_PARAM_GROUP")
     [[ "$APPLY_IMMEDIATELY" == "true" ]] && REPLICA_MODIFY_ARGS+=(--apply-immediately)
 
     aws rds modify-db-instance "${REPLICA_MODIFY_ARGS[@]}" --output json > /dev/null 2>&1 || {
-      echo "  ERROR: Failed to upgrade replica $REPLICA" >&2
+      echo "  ERROR: Failed to upgrade replica $REPLICA_ID" >&2
       exit 1
     }
 
     if [[ "$APPLY_IMMEDIATELY" == "true" ]]; then
-      echo "  Waiting for replica $REPLICA upgrade..." >&2
+      echo "  Waiting for replica $REPLICA_ID upgrade..." >&2
       local_start=$(date +%s)
       while true; do
         REP_STATUS=$(aws rds describe-db-instances \
-          ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
-          --db-instance-identifier "$REPLICA" \
+          "${REPLICA_REGION_ARGS[@]}" \
+          --db-instance-identifier "$REPLICA_ID" \
           --query 'DBInstances[0].[DBInstanceStatus,EngineVersion]' \
           --output text 2>&1)
         REP_INST_STATUS=$(echo "$REP_STATUS" | awk '{print $1}')
         REP_VERSION=$(echo "$REP_STATUS" | awk '{print $2}')
         local_elapsed=$(( $(date +%s) - local_start ))
 
-        echo "  [$REPLICA] Status: $REP_INST_STATUS, Version: $REP_VERSION (${local_elapsed}s)" >&2
+        echo "  [$REPLICA_ID] Status: $REP_INST_STATUS, Version: $REP_VERSION (${local_elapsed}s)" >&2
 
         if [[ "$REP_INST_STATUS" == "available" && "$REP_VERSION" == "$TARGET_VERSION"* ]]; then
-          echo "  Replica $REPLICA upgraded successfully." >&2
+          echo "  Replica $REPLICA_ID upgraded successfully." >&2
           break
         fi
         if [[ "$local_elapsed" -ge "$TIMEOUT" ]]; then
-          echo "  ERROR: Replica $REPLICA upgrade timeout after ${TIMEOUT}s" >&2
+          echo "  ERROR: Replica $REPLICA_ID upgrade timeout after ${TIMEOUT}s" >&2
           exit 1
         fi
         sleep "$POLL_INTERVAL"
