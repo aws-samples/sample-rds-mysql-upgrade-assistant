@@ -168,29 +168,122 @@ sudo apt install jq
 ./scripts/batch/batch_upgrade.sh --config examples/batch_config.yaml --concurrency 3
 ```
 
-## Using with Kiro (MCP Server)
+## Using with Kiro
 
-1. Add to your MCP configuration:
+### Install Kiro IDE
+
+Download from [kiro.dev/downloads](https://kiro.dev/downloads/):
+
+- **macOS** — Apple Silicon / Intel `.dmg`
+- **Windows** — x64 installer
+- **Linux** — `.deb` (Ubuntu 24+) or Universal AppImage
+
+Launch Kiro and sign in with your AWS Builder ID or IAM Identity Center.
+
+### Install Kiro CLI (Optional)
+
+Kiro CLI brings the same AI-assisted workflow to your terminal — useful for headless environments, SSH sessions, or CI pipelines.
+
+```bash
+# macOS / Linux
+curl -fsSL https://cli.kiro.dev/install | bash
+
+# Windows (PowerShell)
+irm 'https://cli.kiro.dev/install.ps1' | iex
+```
+
+After install, authenticate:
+
+```bash
+kiro-cli login
+```
+
+Verify installation:
+
+```bash
+kiro-cli doctor
+```
+
+For full details see [Kiro CLI Installation](https://kiro.dev/docs/cli/installation/).
+
+### Install uv (Python package manager)
+
+The MCP server runs via `uv`. Install it if you don't have it:
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or via Homebrew
+brew install uv
+```
+
+Verify: `uv --version`
+
+### Configure MCP Server
+
+#### For Kiro IDE
+
+Create or edit `.kiro/settings/mcp.json` in the workspace root:
 
 ```json
 {
   "mcpServers": {
     "rds-mysql-upgrade": {
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/rds-mysql-upgrade-assistant", "python", "-m", "rds_upgrade_mcp.server"],
+      "args": [
+        "run", "--directory", "/absolute/path/to/rds-mysql-upgrade-assistant",
+        "python", "-m", "rds_upgrade_mcp.server"
+      ],
       "env": {
         "AWS_PROFILE": "default",
-        "AWS_DEFAULT_REGION": "us-east-1"
-      }
+        "AWS_DEFAULT_REGION": "us-west-2"
+      },
+      "disabled": false,
+      "autoApprove": []
     }
   }
 }
 ```
 
-2. In Kiro, use natural language:
-   - "Discover all MySQL 8.0 instances in us-east-1"
-   - "Run precheck on prod-db-01"
-   - "Create Blue/Green deployment for prod-db-01 upgrading to 8.4"
+> Replace `/absolute/path/to/rds-mysql-upgrade-assistant` with the actual path to this repo.
+> Set `AWS_DEFAULT_REGION` to your target region.
+
+A ready-to-edit example is available at [`examples/mcp.json`](examples/mcp.json).
+
+Kiro auto-detects config changes and starts the MCP server. You can also reconnect via Command Palette → "MCP: Reconnect Server".
+
+#### For Kiro CLI
+
+Kiro CLI uses the same `mcp.json` format. Place it at `~/.kiro/settings/mcp.json` for global access, or in the workspace `.kiro/settings/mcp.json`.
+
+```bash
+# Start a chat session with MCP tools available
+kiro-cli chat
+
+# Or run a single command in headless mode
+kiro-cli chat --headless "Discover all MySQL 8.0 instances in us-west-2"
+```
+
+### Verify MCP Connection
+
+In Kiro (IDE or CLI), try:
+
+```
+Discover all MySQL 8.0 instances
+```
+
+If the MCP server is connected, Kiro will call the `discover_instances` tool and return results.
+
+### Example Kiro Commands
+
+Once connected, use natural language:
+
+- "Discover all MySQL 8.0 instances in us-west-2"
+- "Run precheck on prod-db-01 using secret prod/db01/creds"
+- "Create Blue/Green deployment for prod-db-01 upgrading to 8.4"
+- "Check the status of Blue/Green deployment bgd-xxx"
+- "Run batch upgrade with config examples/batch_config.yaml in dry-run mode"
 
 ## Upgrade Workflow
 

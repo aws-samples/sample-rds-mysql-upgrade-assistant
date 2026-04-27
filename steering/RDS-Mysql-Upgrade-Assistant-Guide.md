@@ -1,4 +1,55 @@
-# MySQL 8.0 → 8.4 Upgrade Guide
+# RDS MySQL Upgrade Assistant Guide
+
+## Getting Started with Kiro
+
+This toolkit can be used via shell scripts directly, or through Kiro (IDE / CLI) with the MCP server for a natural language workflow.
+
+### Kiro IDE
+
+1. Download from [kiro.dev/downloads](https://kiro.dev/downloads/) (macOS / Windows / Linux)
+2. Sign in with AWS Builder ID or IAM Identity Center
+3. Open this project in Kiro
+
+### Kiro CLI
+
+```bash
+# macOS / Linux
+curl -fsSL https://cli.kiro.dev/install | bash
+kiro-cli login
+```
+
+### MCP Server Setup
+
+Create `.kiro/settings/mcp.json` in the workspace (or `~/.kiro/settings/mcp.json` for global):
+
+```json
+{
+  "mcpServers": {
+    "rds-mysql-upgrade": {
+      "command": "uv",
+      "args": [
+        "run", "--directory", "/path/to/rds-mysql-upgrade-assistant",
+        "python", "-m", "rds_upgrade_mcp.server"
+      ],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_DEFAULT_REGION": "us-west-2"
+      }
+    }
+  }
+}
+```
+
+Requires `uv` — install via `curl -LsSf https://astral.sh/uv/install.sh | sh` or `brew install uv`.
+
+### Example Commands in Kiro
+
+- "Discover all MySQL 8.0 instances"
+- "Run precheck on mysql8 using secret prod/db/creds"
+- "Create Blue/Green deployment for mysql8 upgrading to 8.4"
+- "Batch upgrade with config examples/batch_config.yaml --dry-run"
+
+---
 
 ## Supported Upgrade Paths
 

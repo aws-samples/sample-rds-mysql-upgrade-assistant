@@ -95,9 +95,9 @@ To use this solution, you need:
 - AWS CLI v2 installed and configured with appropriate IAM permissions
 - `mysql` client (standard MySQL command-line client)
 - `jq` (JSON processor)
-- Python 3.10+ with `uv` (for MCP server only — not required for standalone script usage)
+- Python 3.10+ with [`uv`](https://docs.astral.sh/uv/getting-started/installation/) (for MCP server only — not required for standalone script usage)
 - AWS Secrets Manager secrets containing database credentials for each instance
-- Kiro IDE (for natural language interface — not required for standalone script usage)
+- Kiro IDE or Kiro CLI (for natural language interface — not required for standalone script usage)
 
 ## Getting started
 
@@ -108,9 +108,45 @@ git clone https://github.com/aws-samples/rds-mysql-upgrade-assistant.git
 cd rds-mysql-upgrade-assistant
 ```
 
+### Install Kiro
+
+You can interact with the upgrade assistant through Kiro IDE (graphical) or Kiro CLI (terminal). Install one or both:
+
+**Kiro IDE** — Download from [kiro.dev/downloads](https://kiro.dev/downloads/) for macOS, Windows, or Linux. Launch and sign in with your AWS Builder ID or IAM Identity Center.
+
+**Kiro CLI** — Install from your terminal:
+
+```bash
+# macOS / Linux
+curl -fsSL https://cli.kiro.dev/install | bash
+
+# Windows (PowerShell)
+irm 'https://cli.kiro.dev/install.ps1' | iex
+```
+
+Then authenticate:
+
+```bash
+kiro-cli login
+```
+
+For full installation details, see [Kiro CLI Installation](https://kiro.dev/docs/cli/installation/).
+
+### Install uv
+
+The MCP server runs via `uv`, a fast Python package manager:
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or via Homebrew
+brew install uv
+```
+
 ### Option 1: Interactive upgrade with Kiro
 
-Add the MCP server to your Kiro configuration:
+Add the MCP server to your Kiro configuration. For Kiro IDE, create `.kiro/settings/mcp.json` in the workspace root. For Kiro CLI, place it at `~/.kiro/settings/mcp.json` for global access:
 
 ```json
 {
@@ -121,14 +157,22 @@ Add the MCP server to your Kiro configuration:
                "python", "-m", "rds_upgrade_mcp.server"],
       "env": {
         "AWS_PROFILE": "default",
-        "AWS_DEFAULT_REGION": "us-east-1"
+        "AWS_DEFAULT_REGION": "us-west-2"
       }
     }
   }
 }
 ```
 
-Start a conversation with Kiro using natural language:
+> Replace `/path/to/rds-mysql-upgrade-assistant` with the actual absolute path to the cloned repository. Set `AWS_DEFAULT_REGION` to your target region.
+
+Kiro IDE auto-detects config changes and starts the MCP server. You can also reconnect via Command Palette → "MCP: Reconnect Server". For Kiro CLI, start a chat session:
+
+```bash
+kiro-cli chat
+```
+
+Start a conversation using natural language:
 
 ```
 "Discover all MySQL 8.0 instances in us-east-1 tagged with env=production"
@@ -264,7 +308,7 @@ After completing all upgrades:
 
 ## Conclusion
 
-In this post, we demonstrated how to automate large-scale RDS MySQL 8.0 to 8.4 upgrades using the RDS MySQL Upgrade Assistant. The tool combines a 19-check SQL precheck engine, proven parameter migration tooling, and batch orchestration with Blue/Green deployment support — all accessible through both direct shell scripts and Kiro's natural language interface.
+In this post, we demonstrated how to automate large-scale RDS MySQL 8.0 to 8.4 upgrades using the RDS MySQL Upgrade Assistant. The tool combines a 19-check SQL precheck engine, proven parameter migration tooling, and batch orchestration with Blue/Green deployment support — all accessible through direct shell scripts, Kiro IDE's graphical interface, or Kiro CLI's terminal-based workflow.
 
 By automating the upgrade lifecycle, teams can reduce the time and risk associated with major MySQL version upgrades, transforming a multi-week manual effort into a repeatable, auditable process. The shell-first architecture ensures the tool works in any environment with AWS CLI and a MySQL client, with no additional infrastructure required.
 
