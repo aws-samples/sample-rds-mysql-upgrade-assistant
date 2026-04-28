@@ -78,8 +78,9 @@ Requires `uv` — install via `curl -LsSf https://astral.sh/uv/install.sh | sh` 
 
 ### Authentication Changes
 - `mysql_native_password` disabled by default in 8.4
-- Set `loose_mysql_native_password=ON` in parameter group if apps still need it
-- Recommend migrating to `caching_sha2_password`
+- On RDS MySQL, this parameter is not modifiable in the parameter group
+- Migrate all accounts to `caching_sha2_password` before upgrading: `ALTER USER ... IDENTIFIED WITH caching_sha2_password BY '...'`
+- Run precheck (Check #5: authMethodUsage) to identify affected accounts
 
 ### Removed Features
 - `authentication_fido` plugin removed (use `authentication_webauthn`)

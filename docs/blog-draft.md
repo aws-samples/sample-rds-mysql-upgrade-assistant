@@ -302,7 +302,7 @@ When using this solution, keep the following best practices in mind:
 - **Run precheck on the green environment.** After the Blue/Green deployment is created, run the precheck again on the green environment to verify the upgrade succeeded cleanly.
 - **Keep blue environments temporarily.** After switchover, retain the blue environment for 24–48 hours as a rollback safety net before cleanup.
 - **Monitor parameter group changes.** Review the `migrate_param_group.sh` report carefully. Some parameters have changed defaults in MySQL 8.4 (e.g., `innodb_adaptive_hash_index` defaults to OFF) that may affect workload performance.
-- **Plan for `mysql_native_password`.** MySQL 8.4 disables `mysql_native_password` by default. If applications still require it, set `loose_mysql_native_password=ON` in the target parameter group. Plan to migrate to `caching_sha2_password` long-term.
+- **Plan for `mysql_native_password`.** MySQL 8.4 disables `mysql_native_password` by default. On RDS MySQL, this parameter is not modifiable in the parameter group. Before upgrading, migrate all application accounts from `mysql_native_password` to `caching_sha2_password` using `ALTER USER ... IDENTIFIED WITH caching_sha2_password BY '...'`. Run precheck (Check #5: authMethodUsage) to identify affected accounts.
 - **Manage concurrency carefully.** For Blue/Green deployments, 3–5 concurrent upgrades is a reasonable starting point. Monitor your account's RDS service quotas and CloudWatch metrics during batch execution.
 
 ## Clean up
