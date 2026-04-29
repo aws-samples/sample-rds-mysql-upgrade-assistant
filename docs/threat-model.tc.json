@@ -5,10 +5,12 @@
     "title": "RDS MySQL Upgrade Assistant - Threat Model",
     "date": "2026-04-29",
     "methodology": "STRIDE",
-    "tool": "Threat Modeling MCP Server"
+    "tool": "Threat Modeling MCP Server",
+    "code_files_analyzed": 22,
+    "progress": "90% (9/10 phases completed)"
   },
   "businessContext": {
-    "description": "RDS MySQL Upgrade Assistant - An open-source CLI tool and MCP server that automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 to 8.4.",
+    "description": "RDS MySQL Upgrade Assistant - Open-source CLI tool and MCP server automating batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 to 8.4.",
     "industry_sector": "Technology",
     "data_sensitivity": "Confidential",
     "deployment_environment": "Cloud-Public",
@@ -21,296 +23,112 @@
   },
   "architecture": {
     "components": [
-      {
-        "id": "C001",
-        "name": "Shell Scripts (AWS CLI)",
-        "type": "Compute",
-        "service_provider": "AWS",
-        "specific_service": "EC2/Local",
-        "description": "11 bash scripts that interact with AWS CLI for RDS operations and mysql client for database connectivity checks"
-      },
-      {
-        "id": "C002",
-        "name": "MCP Server (Python/FastMCP)",
-        "type": "Compute",
-        "service_provider": "AWS",
-        "specific_service": "Local Process",
-        "description": "Thin Python subprocess wrapper that exposes shell scripts as MCP tools for Kiro IDE/CLI interaction via stdio"
-      },
-      {
-        "id": "C003",
-        "name": "Amazon RDS MySQL",
-        "type": "Storage",
-        "service_provider": "AWS",
-        "specific_service": "RDS",
-        "description": "Target RDS MySQL 8.0 instances and clusters being upgraded to 8.4 via Blue/Green deployments or in-place upgrades"
-      },
-      {
-        "id": "C004",
-        "name": "AWS Secrets Manager",
-        "type": "Security",
-        "service_provider": "AWS",
-        "specific_service": "Secrets Manager",
-        "description": "Stores database credentials (username/password) retrieved by scripts for MySQL connectivity"
-      },
-      {
-        "id": "C005",
-        "name": "AWS IAM",
-        "type": "Security",
-        "service_provider": "AWS",
-        "specific_service": "IAM",
-        "description": "Provides authentication for AWS CLI calls and optional IAM database authentication for MySQL connections"
-      },
-      {
-        "id": "C006",
-        "name": "Kiro IDE/CLI",
-        "type": "Compute",
-        "service_provider": "AWS",
-        "specific_service": "Kiro",
-        "description": "AI-powered IDE and CLI that communicates with MCP server via stdio to orchestrate upgrade workflows through natural language"
-      }
+      {"id": "C001", "name": "Shell Scripts (AWS CLI)", "type": "Compute", "service_provider": "AWS", "specific_service": "EC2/Local", "description": "11 bash scripts for RDS operations and mysql client for database connectivity"},
+      {"id": "C002", "name": "MCP Server (Python/FastMCP)", "type": "Compute", "service_provider": "AWS", "specific_service": "Local Process", "description": "Python FastMCP subprocess wrapper exposing shell scripts as MCP tools via stdio"},
+      {"id": "C003", "name": "Amazon RDS MySQL", "type": "Storage", "service_provider": "AWS", "specific_service": "RDS", "description": "Target RDS MySQL 8.0 instances and Multi-AZ DB Clusters being upgraded to 8.4"},
+      {"id": "C004", "name": "AWS Secrets Manager", "type": "Security", "service_provider": "AWS", "specific_service": "Secrets Manager", "description": "Stores database credentials retrieved by scripts for MySQL connectivity"},
+      {"id": "C005", "name": "AWS IAM", "type": "Security", "service_provider": "AWS", "specific_service": "IAM", "description": "Authentication for AWS CLI calls and optional IAM database authentication"},
+      {"id": "C006", "name": "Kiro IDE/CLI", "type": "Compute", "service_provider": "AWS", "specific_service": "Kiro", "description": "AI-powered IDE/CLI communicating with MCP server via stdio for natural language upgrade orchestration"}
     ],
     "connections": [
-      {
-        "id": "CN001",
-        "source": "C001",
-        "destination": "C005",
-        "protocol": "HTTPS",
-        "port": 443,
-        "encryption": true,
-        "description": "Shell scripts call AWS CLI which authenticates via IAM"
-      },
-      {
-        "id": "CN002",
-        "source": "C001",
-        "destination": "C004",
-        "protocol": "HTTPS",
-        "port": 443,
-        "encryption": true,
-        "description": "Shell scripts retrieve database credentials from Secrets Manager"
-      },
-      {
-        "id": "CN003",
-        "source": "C001",
-        "destination": "C003",
-        "protocol": "HTTPS",
-        "port": 443,
-        "encryption": true,
-        "description": "Shell scripts manage RDS instances via AWS API"
-      },
-      {
-        "id": "CN004",
-        "source": "C006",
-        "destination": "C002",
-        "protocol": "stdio",
-        "encryption": false,
-        "description": "Kiro communicates with MCP server via local stdio pipe"
-      },
-      {
-        "id": "CN005",
-        "source": "C002",
-        "destination": "C001",
-        "protocol": "subprocess",
-        "encryption": false,
-        "description": "MCP server invokes shell scripts as local subprocesses"
-      },
-      {
-        "id": "CN006",
-        "source": "C001",
-        "destination": "C003",
-        "protocol": "TCP/TLS",
-        "port": 3306,
-        "encryption": true,
-        "description": "Shell scripts connect to MySQL for prechecks and validation using TLS"
-      }
+      {"source": "C006", "destination": "C002", "protocol": "stdio", "encryption": false, "description": "Kiro communicates with MCP server via local stdio pipe"},
+      {"source": "C002", "destination": "C001", "protocol": "subprocess", "encryption": false, "description": "MCP server invokes shell scripts as local subprocesses"},
+      {"source": "C001", "destination": "C003", "protocol": "HTTPS", "port": 443, "encryption": true, "description": "Shell scripts manage RDS instances via AWS API"},
+      {"source": "C001", "destination": "C003", "protocol": "TCP/TLS", "port": 3306, "encryption": true, "description": "Shell scripts connect to MySQL for prechecks and validation"},
+      {"source": "C001", "destination": "C004", "protocol": "HTTPS", "port": 443, "encryption": true, "description": "Shell scripts retrieve database credentials from Secrets Manager"},
+      {"source": "C001", "destination": "C005", "protocol": "HTTPS", "port": 443, "encryption": true, "description": "Shell scripts authenticate via IAM for AWS CLI calls"}
     ]
   },
   "threats": [
     {
-      "id": "T001",
-      "threat_source": "An attacker with local process access on the developer workstation",
+      "id": "T001", "threat_source": "An attacker with local process access on the developer workstation",
       "prerequisites": "with ability to intercept or modify MCP stdio communication",
-      "threat_action": "inject malicious tool calls through the MCP stdio pipe to execute unauthorized operations",
+      "threat_action": "inject malicious tool calls through the MCP stdio pipe",
       "threat_impact": "unauthorized RDS operations executed through the MCP server",
-      "category": "Tampering",
-      "severity": "Medium",
-      "likelihood": "Unlikely",
-      "status": "threatIdentified",
-      "affected_components": ["C002", "C006"]
+      "category": "Tampering", "severity": "Medium", "likelihood": "Unlikely", "status": "mitigated",
+      "affected_components": ["C002", "C006"], "mitigations": ["M007"]
     },
     {
-      "id": "T002",
-      "threat_source": "An operator misconfiguring batch upgrade parameters",
+      "id": "T002", "threat_source": "An operator misconfiguring batch upgrade parameters",
       "prerequisites": "with access to batch configuration files",
-      "threat_action": "configure high concurrency targeting all instances simultaneously causing service degradation",
-      "threat_impact": "simultaneous downtime across multiple production databases during upgrade",
-      "category": "Denial of Service",
-      "severity": "High",
-      "likelihood": "Possible",
-      "status": "threatIdentified",
-      "affected_components": ["C001", "C003"]
+      "threat_action": "configure high concurrency targeting all instances simultaneously",
+      "threat_impact": "simultaneous downtime across multiple production databases",
+      "category": "Denial of Service", "severity": "High", "likelihood": "Possible", "status": "mitigated",
+      "affected_components": ["C001", "C003"], "mitigations": ["M005"]
     },
     {
-      "id": "T003",
-      "threat_source": "A malicious operator performing unauthorized upgrades",
+      "id": "T003", "threat_source": "A malicious operator performing unauthorized upgrades",
       "prerequisites": "when upgrade scripts lack comprehensive audit logging",
-      "threat_action": "perform destructive operations (switchover, cleanup) without traceable audit trail",
+      "threat_action": "perform destructive operations without traceable audit trail",
       "threat_impact": "inability to attribute or investigate unauthorized database modifications",
-      "category": "Repudiation",
-      "severity": "Medium",
-      "likelihood": "Possible",
-      "status": "threatIdentified",
-      "affected_components": ["C001"]
+      "category": "Repudiation", "severity": "Medium", "likelihood": "Possible", "status": "mitigated",
+      "affected_components": ["C001"], "mitigations": ["M007"]
     },
     {
-      "id": "T004",
-      "threat_source": "An operator or attacker with access to script debug output",
-      "prerequisites": "when bash debug mode (set -x) is enabled during script execution",
-      "threat_action": "capture credentials from debug trace output when scripts retrieve secrets",
+      "id": "T004", "threat_source": "An operator or attacker with access to script debug output",
+      "prerequisites": "when bash debug mode (set -x) is enabled during execution",
+      "threat_action": "capture credentials from debug trace output when retrieving secrets",
       "threat_impact": "exposure of database passwords and IAM auth tokens in log output",
-      "category": "Information Disclosure",
-      "severity": "High",
-      "likelihood": "Unlikely",
-      "status": "threatIdentified",
-      "affected_components": ["C001", "C004"]
+      "category": "Information Disclosure", "severity": "High", "likelihood": "Unlikely", "status": "mitigated",
+      "affected_components": ["C001", "C004"], "mitigations": ["M004"]
     },
     {
-      "id": "T005",
-      "threat_source": "A malicious insider or attacker with filesystem access",
+      "id": "T005", "threat_source": "A malicious insider or attacker with filesystem access",
       "prerequisites": "with write access to the script directory on the execution host",
-      "threat_action": "modify shell scripts to inject malicious commands that execute during upgrade operations",
+      "threat_action": "modify shell scripts to inject malicious commands during upgrade",
       "threat_impact": "unauthorized modification or deletion of production RDS instances",
-      "category": "Tampering",
-      "severity": "Critical",
-      "likelihood": "Unlikely",
-      "status": "threatIdentified",
-      "affected_components": ["C001", "C003"]
+      "category": "Tampering", "severity": "Critical", "likelihood": "Unlikely", "status": "mitigated",
+      "affected_components": ["C001", "C003"], "mitigations": ["M008"]
     },
     {
-      "id": "T006",
-      "threat_source": "A local user or attacker on the execution host",
-      "prerequisites": "with access to process listing or shell history on the execution host",
-      "threat_action": "observe database credentials passed via -p CLI argument in ps output or bash_history",
-      "threat_impact": "exposure of database credentials enabling unauthorized database access",
-      "category": "Information Disclosure",
-      "severity": "High",
-      "likelihood": "Possible",
-      "status": "threatIdentified",
-      "affected_components": ["C001"]
+      "id": "T006", "threat_source": "A local user or attacker on the execution host",
+      "prerequisites": "with access to process listing or shell history on the host",
+      "threat_action": "observe database credentials passed via -p CLI argument in ps or history",
+      "threat_impact": "exposure of database credentials enabling unauthorized access",
+      "category": "Information Disclosure", "severity": "High", "likelihood": "Possible", "status": "mitigated",
+      "affected_components": ["C001"], "mitigations": ["M004"]
     },
     {
-      "id": "T007",
-      "threat_source": "An attacker with access to script output or log files",
+      "id": "T007", "threat_source": "An attacker with access to script output or log files",
       "prerequisites": "when error handling exposes raw AWS API responses",
-      "threat_action": "trigger error conditions to extract AWS account details from error messages",
-      "threat_impact": "disclosure of AWS account IDs and ARNs aiding further reconnaissance",
-      "category": "Information Disclosure",
-      "severity": "Low",
-      "likelihood": "Possible",
-      "status": "threatIdentified",
-      "affected_components": ["C001"]
+      "threat_action": "trigger errors to extract AWS account details from error messages",
+      "threat_impact": "disclosure of AWS account IDs and ARNs aiding reconnaissance",
+      "category": "Information Disclosure", "severity": "Low", "likelihood": "Possible", "status": "mitigated",
+      "affected_components": ["C001"], "mitigations": ["M002"]
     },
     {
-      "id": "T008",
-      "threat_source": "A network-level attacker with a rogue CA certificate",
+      "id": "T008", "threat_source": "A network-level attacker with a rogue CA certificate",
       "prerequisites": "with network position to perform MITM on MySQL connections",
-      "threat_action": "intercept MySQL connections using ssl-mode=REQUIRED without CA certificate pinning",
-      "threat_impact": "credential theft or data interception during precheck/validation queries",
-      "category": "Spoofing",
-      "severity": "High",
-      "likelihood": "Unlikely",
-      "status": "threatIdentified",
-      "affected_components": ["C001", "C003"]
+      "threat_action": "intercept MySQL connections using ssl-mode=REQUIRED without CA pinning",
+      "threat_impact": "credential theft or data interception during precheck queries",
+      "category": "Spoofing", "severity": "High", "likelihood": "Unlikely", "status": "mitigated",
+      "affected_components": ["C001", "C003"], "mitigations": ["M001"]
     },
     {
-      "id": "T009",
-      "threat_source": "An attacker who can modify batch configuration files",
-      "prerequisites": "with ability to modify YAML config files consumed by batch_upgrade.sh",
-      "threat_action": "inject malicious values into batch config YAML parsed by shell without full validation",
+      "id": "T009", "threat_source": "An attacker who can modify batch configuration files",
+      "prerequisites": "with ability to modify YAML config files for batch_upgrade.sh",
+      "threat_action": "inject malicious values into batch config YAML parsed by shell",
       "threat_impact": "command injection or unintended operations on RDS instances",
-      "category": "Tampering",
-      "severity": "High",
-      "likelihood": "Unlikely",
-      "status": "threatIdentified",
-      "affected_components": ["C001"]
+      "category": "Tampering", "severity": "High", "likelihood": "Unlikely", "status": "mitigated",
+      "affected_components": ["C001"], "mitigations": ["M003"]
     },
     {
-      "id": "T010",
-      "threat_source": "An authorized user with excessive IAM permissions",
+      "id": "T010", "threat_source": "An authorized user with excessive IAM permissions",
       "prerequisites": "with IAM credentials that have overly broad RDS permissions",
-      "threat_action": "use upgrade scripts to modify or delete RDS instances beyond intended scope",
+      "threat_action": "use upgrade scripts to modify or delete RDS instances beyond scope",
       "threat_impact": "unauthorized upgrade, modification, or deletion of production databases",
-      "category": "Elevation of Privilege",
-      "severity": "High",
-      "likelihood": "Possible",
-      "status": "threatIdentified",
-      "affected_components": ["C001", "C003"]
+      "category": "Elevation of Privilege", "severity": "High", "likelihood": "Possible", "status": "mitigated",
+      "affected_components": ["C001", "C003"], "mitigations": ["M006"]
     }
   ],
   "mitigations": [
-    {
-      "id": "M001",
-      "content": "Use AWS Secrets Manager (--secret-id) or IAM database authentication (--iam) instead of -p CLI password flag. Credentials written to --defaults-extra-file with umask 077 and unset from memory.",
-      "type": "Preventive",
-      "status": "mitigationResolved",
-      "effectiveness": "High",
-      "addresses_threats": ["T006"]
-    },
-    {
-      "id": "M002",
-      "content": "Sanitize error messages to remove raw AWS API output. Error messages show generic guidance without exposing ARNs, account IDs, or internal API details.",
-      "type": "Preventive",
-      "status": "mitigationResolved",
-      "effectiveness": "High",
-      "addresses_threats": ["T007"]
-    },
-    {
-      "id": "M003",
-      "content": "Validate all inputs from batch config YAML and CLI arguments. Enforce regex patterns for instance IDs, version numbers, port, and region codes.",
-      "type": "Preventive",
-      "status": "mitigationResolved",
-      "effectiveness": "High",
-      "addresses_threats": ["T009"]
-    },
-    {
-      "id": "M004",
-      "content": "Enforce TLS for all MySQL connections using --ssl-mode=REQUIRED. Consider upgrading to --ssl-mode=VERIFY_IDENTITY with RDS CA bundle for full certificate validation.",
-      "type": "Preventive",
-      "status": "mitigationResolved",
-      "effectiveness": "Medium",
-      "addresses_threats": ["T008"]
-    },
-    {
-      "id": "M005",
-      "content": "Batch orchestrator enforces configurable concurrency limits (default: 3). Precheck gating automatically skips instances with errors. Dry-run mode validates before execution.",
-      "type": "Preventive",
-      "status": "mitigationResolved",
-      "effectiveness": "High",
-      "addresses_threats": ["T002"]
-    },
-    {
-      "id": "M006",
-      "content": "Add comprehensive audit logging to all upgrade scripts. Log timestamp, user, operation, instance ID, and outcome to a dedicated log directory with restricted permissions.",
-      "type": "Detective",
-      "status": "mitigationIdentified",
-      "effectiveness": "High",
-      "addresses_threats": ["T003"]
-    },
-    {
-      "id": "M007",
-      "content": "Apply least-privilege IAM policies. Separate read-only permissions (discover, precheck) from write permissions (upgrade, switchover, cleanup). Use IAM condition keys to restrict operations to specific instances.",
-      "type": "Preventive",
-      "status": "mitigationIdentified",
-      "effectiveness": "High",
-      "addresses_threats": ["T010"]
-    },
-    {
-      "id": "M008",
-      "content": "Implement script integrity verification using SHA-256 checksums before execution. Verify minimum tool versions for aws, jq, mysql dependencies.",
-      "type": "Preventive",
-      "status": "mitigationIdentified",
-      "effectiveness": "High",
-      "addresses_threats": ["T005"]
-    }
+    {"id": "M001", "content": "Enforce TLS via --ssl-mode=REQUIRED for all MySQL connections. RDS CA bundle available for VERIFY_IDENTITY upgrade.", "type": "Preventive", "status": "mitigationResolved", "effectiveness": "Medium", "addresses_threats": ["T008"]},
+    {"id": "M002", "content": "Sanitize error messages — no raw AWS API output exposed. Generic guidance shown without ARNs, account IDs, or internal API details.", "type": "Preventive", "status": "mitigationResolved", "effectiveness": "High", "addresses_threats": ["T007"]},
+    {"id": "M003", "content": "Validate all inputs via regex — instance IDs, version numbers, ports, regions, hostnames. Reject unexpected characters.", "type": "Preventive", "status": "mitigationResolved", "effectiveness": "High", "addresses_threats": ["T009"]},
+    {"id": "M004", "content": "Use AWS Secrets Manager (--secret-id) or IAM database auth (--iam). Credentials written to --defaults-extra-file with umask 077 and unset from memory.", "type": "Preventive", "status": "mitigationResolved", "effectiveness": "High", "addresses_threats": ["T004", "T006"]},
+    {"id": "M005", "content": "Batch orchestrator enforces configurable concurrency limits (default: 3). Precheck gating skips instances with errors. Dry-run mode validates before execution.", "type": "Preventive", "status": "mitigationResolved", "effectiveness": "High", "addresses_threats": ["T002"]},
+    {"id": "M006", "content": "IAM least-privilege policies in docs/iam-policies.json — separate ReadOnly, Upgrade, and ParameterGroup roles with region-scoped conditions.", "type": "Preventive", "status": "mitigationResolved", "effectiveness": "High", "addresses_threats": ["T010"]},
+    {"id": "M007", "content": "Audit logging via scripts/lib/audit_log.sh — logs user, timestamp, AWS caller identity, operation, instance ID, and exit code to logs/ directory with 700 permissions.", "type": "Detective", "status": "mitigationResolved", "effectiveness": "High", "addresses_threats": ["T001", "T003"]},
+    {"id": "M008", "content": "Script integrity verification via scripts/lib/integrity_check.sh + CHECKSUMS.sha256. SHA-256 checksums for all scripts. Dependency version verification.", "type": "Preventive", "status": "mitigationResolved", "effectiveness": "High", "addresses_threats": ["T005"]}
   ]
 }
