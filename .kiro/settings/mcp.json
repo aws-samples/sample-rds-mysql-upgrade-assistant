@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "threat-modeling-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+ssh://git@ssh.gitlab.aws.dev/engsec-threatmodelingmcp/ThreatModelingMCPServer.git",
+        "threat-modeling-mcp-server"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "add_threat"
+      ]
+    }
+  }
+}
