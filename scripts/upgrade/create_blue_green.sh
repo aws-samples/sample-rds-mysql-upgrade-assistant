@@ -13,6 +13,16 @@
 
 set -euo pipefail
 
+# --- Load libraries ---
+SCRIPT_DIR_LIB="$(cd "$(dirname "$0")/.." && pwd)/lib"
+if [[ -f "$SCRIPT_DIR_LIB/audit_log.sh" ]]; then
+  source "$SCRIPT_DIR_LIB/audit_log.sh"
+fi
+if [[ -f "$SCRIPT_DIR_LIB/integrity_check.sh" ]]; then
+  source "$SCRIPT_DIR_LIB/integrity_check.sh"
+  verify_dependencies "aws:2.0" "jq:1.5"
+fi
+
 INSTANCE_ID=""
 TARGET_VERSION=""
 TARGET_PARAM_GROUP=""
@@ -31,6 +41,12 @@ done
 if [[ -z "$INSTANCE_ID" || -z "$TARGET_VERSION" || -z "$TARGET_PARAM_GROUP" ]]; then
   echo "Usage: $0 --instance-id <id> --target-version <ver> --target-param-group <group> [--region <region>]"
   exit 1
+fi
+
+# --- Audit init ---
+if type audit_init &>/dev/null; then
+  audit_init "create_blue_green" "$@"
+  audit_log "INFO" "Instance: $INSTANCE_ID, Target: $TARGET_VERSION, ParamGroup: $TARGET_PARAM_GROUP"
 fi
 
 # Get source ARN — try instance first, then cluster (Multi-AZ DB Cluster)

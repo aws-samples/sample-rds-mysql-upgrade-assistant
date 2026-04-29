@@ -17,6 +17,16 @@
 
 set -euo pipefail
 
+# --- Load libraries ---
+SCRIPT_DIR_LIB="$(cd "$(dirname "$0")/.." && pwd)/lib"
+if [[ -f "$SCRIPT_DIR_LIB/audit_log.sh" ]]; then
+  source "$SCRIPT_DIR_LIB/audit_log.sh"
+fi
+if [[ -f "$SCRIPT_DIR_LIB/integrity_check.sh" ]]; then
+  source "$SCRIPT_DIR_LIB/integrity_check.sh"
+  verify_dependencies "aws:2.0" "jq:1.5"
+fi
+
 INSTANCE_ID=""
 TARGET_VERSION=""
 TARGET_PARAM_GROUP=""
@@ -52,6 +62,12 @@ if [[ ! "$TIMEOUT" =~ ^[0-9]+$ ]] || [[ "$TIMEOUT" -lt 1 ]]; then
 fi
 if [[ ! "$TARGET_VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
   echo "ERROR: Invalid --target-version format (expected X.Y or X.Y.Z)" >&2; exit 1
+fi
+
+# --- Audit init ---
+if type audit_init &>/dev/null; then
+  audit_init "in_place_upgrade" "$@"
+  audit_log "INFO" "Instance: $INSTANCE_ID, Target: $TARGET_VERSION, ApplyImmediately: $APPLY_IMMEDIATELY"
 fi
 
 # --- Detect instance vs cluster ---

@@ -13,6 +13,16 @@
 
 set -euo pipefail
 
+# --- Load libraries ---
+SCRIPT_DIR_LIB="$(cd "$(dirname "$0")/.." && pwd)/lib"
+if [[ -f "$SCRIPT_DIR_LIB/audit_log.sh" ]]; then
+  source "$SCRIPT_DIR_LIB/audit_log.sh"
+fi
+if [[ -f "$SCRIPT_DIR_LIB/integrity_check.sh" ]]; then
+  source "$SCRIPT_DIR_LIB/integrity_check.sh"
+  verify_dependencies "aws:2.0" "jq:1.5"
+fi
+
 DEPLOYMENT_ID=""
 TIMEOUT=300
 REGION_ARGS=()
@@ -29,6 +39,12 @@ done
 if [[ -z "$DEPLOYMENT_ID" ]]; then
   echo "Usage: $0 --deployment-id <id> [--region <region>] [--timeout <sec>]"
   exit 1
+fi
+
+# --- Audit init ---
+if type audit_init &>/dev/null; then
+  audit_init "switchover_blue_green" "$@"
+  audit_log "ACTION" "Switchover deployment: $DEPLOYMENT_ID"
 fi
 
 echo "Initiating switchover for deployment: $DEPLOYMENT_ID" >&2

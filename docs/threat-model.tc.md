@@ -186,14 +186,13 @@ Kiro IDE/CLI ──(stdio)──▶ MCP Server ──(subprocess)──▶ Shell
 | M3 | Validate all inputs (instance IDs, versions, ports, regions) via regex. | Preventive | High |
 | M4 | Enforce TLS via --ssl-mode=REQUIRED for all MySQL connections. | Preventive | Medium |
 | M5 | Concurrency limits, precheck gating, and dry-run mode in batch orchestrator. | Preventive | High |
+| M6 | Audit logging via `scripts/lib/audit_log.sh` — logs user, timestamp, operation, AWS caller, exit code. | Detective | High |
+| M7 | IAM least-privilege policies documented in `docs/iam-policies.json` — separate read/write/param roles. | Preventive | High |
+| M8 | Script integrity verification via `scripts/lib/integrity_check.sh` + `CHECKSUMS.sha256`. | Preventive | High |
 
 ### Identified (Planned)
 
-| # | Mitigation | Type | Effectiveness |
-|---|-----------|------|---------------|
-| M6 | Add comprehensive audit logging to all upgrade scripts. | Detective | High |
-| M7 | Apply least-privilege IAM policies with separate read/write roles. | Preventive | High |
-| M8 | Implement script integrity verification (SHA-256 checksums). | Preventive | High |
+No remaining unmitigated threats.
 
 ---
 
@@ -201,9 +200,9 @@ Kiro IDE/CLI ──(stdio)──▶ MCP Server ──(subprocess)──▶ Shell
 
 | Severity | Count | Mitigated |
 |----------|-------|-----------|
-| Critical | 1 | Partially (M8 planned) |
-| High | 6 | 4 resolved, 2 planned |
-| Medium | 2 | 1 resolved, 1 planned |
+| Critical | 1 | Resolved (M8) |
+| High | 6 | All resolved |
+| Medium | 2 | All resolved |
 | Low | 1 | Resolved |
 
-**Overall Risk Posture:** Medium — Critical threats require filesystem access (unlikely in managed environments). High-severity threats are partially mitigated with implemented controls. Planned mitigations (audit logging, IAM least-privilege, integrity checks) will further reduce residual risk.
+**Overall Risk Posture:** Low — All identified threats have implemented mitigations. Critical threat (script tampering) addressed by integrity verification. High-severity threats mitigated by credential management, audit logging, IAM policies, and input validation.

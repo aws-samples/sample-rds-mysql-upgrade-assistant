@@ -1,0 +1,112 @@
+{
+  "ReadOnlyPolicy": {
+    "Description": "Minimum permissions for discovery and precheck operations (discover_instances.sh, mysql_precheck_run.sh)",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "RDSReadOnly",
+          "Effect": "Allow",
+          "Action": [
+            "rds:DescribeDBInstances",
+            "rds:DescribeDBClusters",
+            "rds:DescribeDBParameterGroups",
+            "rds:DescribeDBClusterParameterGroups",
+            "rds:DescribeDBParameters",
+            "rds:DescribeDBClusterParameters",
+            "rds:DescribeDBEngineVersions",
+            "rds:ListTagsForResource"
+          ],
+          "Resource": "*"
+        },
+        {
+          "Sid": "SecretsManagerRead",
+          "Effect": "Allow",
+          "Action": [
+            "secretsmanager:GetSecretValue"
+          ],
+          "Resource": "arn:aws:secretsmanager:*:*:secret:*",
+          "Condition": {
+            "StringLike": {
+              "secretsmanager:ResourceTag/Purpose": "rds-upgrade"
+            }
+          }
+        },
+        {
+          "Sid": "RDSGenerateAuthToken",
+          "Effect": "Allow",
+          "Action": [
+            "rds-db:connect"
+          ],
+          "Resource": "arn:aws:rds-db:*:*:dbuser:*/*"
+        }
+      ]
+    }
+  },
+  "UpgradePolicy": {
+    "Description": "Permissions for upgrade operations (create_blue_green.sh, in_place_upgrade.sh, switchover, cleanup)",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "RDSUpgradeOperations",
+          "Effect": "Allow",
+          "Action": [
+            "rds:CreateBlueGreenDeployment",
+            "rds:DescribeBlueGreenDeployments",
+            "rds:SwitchoverBlueGreenDeployment",
+            "rds:DeleteBlueGreenDeployment",
+            "rds:ModifyDBInstance",
+            "rds:ModifyDBCluster",
+            "rds:CreateDBSnapshot",
+            "rds:CreateDBClusterSnapshot",
+            "rds:DescribeDBSnapshots",
+            "rds:DescribeDBClusterSnapshots"
+          ],
+          "Resource": "*",
+          "Condition": {
+            "StringEquals": {
+              "aws:RequestedRegion": ["us-west-2"]
+            }
+          }
+        },
+        {
+          "Sid": "RDSReadForUpgrade",
+          "Effect": "Allow",
+          "Action": [
+            "rds:DescribeDBInstances",
+            "rds:DescribeDBClusters",
+            "rds:DescribeDBParameterGroups",
+            "rds:DescribeDBClusterParameterGroups"
+          ],
+          "Resource": "*"
+        }
+      ]
+    }
+  },
+  "ParameterGroupPolicy": {
+    "Description": "Permissions for parameter group migration (prepare_param_group.sh, migrate_param_group.sh)",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "ParameterGroupOperations",
+          "Effect": "Allow",
+          "Action": [
+            "rds:CreateDBParameterGroup",
+            "rds:CreateDBClusterParameterGroup",
+            "rds:ModifyDBParameterGroup",
+            "rds:ModifyDBClusterParameterGroup",
+            "rds:DescribeDBParameters",
+            "rds:DescribeDBClusterParameters",
+            "rds:DescribeDBParameterGroups",
+            "rds:DescribeDBClusterParameterGroups",
+            "rds:DescribeEngineDefaultParameters",
+            "rds:DescribeEngineDefaultClusterParameters"
+          ],
+          "Resource": "*"
+        }
+      ]
+    }
+  }
+}
