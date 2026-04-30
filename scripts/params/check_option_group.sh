@@ -8,9 +8,10 @@
 #
 # Logic:
 #   - If instance uses default option group → skip (RDS auto-assigns default:mysql-8.4)
-#   - If option group contains MEMCACHED → ERROR (not supported in 8.4, must remove)
-#   - If option group contains MARIADB_AUDIT_PLUGIN or other options →
-#     create a new mysql8.4 option group with the same options
+#   - If custom option group → create MySQL 8.4 option group
+#     - MEMCACHED excluded (not supported in 8.4)
+#     - MARIADB_AUDIT_PLUGIN and other supported options are migrated
+#     - Empty custom group → create empty 8.4 option group
 #
 # Usage:
 #   ./check_option_group.sh --instance-id <id> [--region <region>]
@@ -48,7 +49,7 @@ if [[ -n "$REGION" ]]; then
   REGION_ARGS=(--region "$REGION")
 fi
 
-# Options not supported in MySQL 8.4 — must remove before upgrade
+# Options not supported in MySQL 8.4 — excluded from target option group
 UNSUPPORTED_OPTIONS=("MEMCACHED")
 
 # --- Get instance option group ---
@@ -82,51 +83,28 @@ OG_JSON=$(aws rds describe-option-groups \
   --option-group-name "$OG_NAME" \
   --output json 2>/dev/null)
 
-OG_ENGINE=$(echo "$OG_JSON" | jq -r '.OptionGroupsList[0].MajorEngineVersion')
 OPTIONS=$(echo "$OG_JSON" | jq '[.OptionGroupsList[0].Options[]]')
-OPTION_NAMES=$(echo "$OPTIONS" | jq -r '[.[].OptionName] | join(",")')
-
-# --- Check for unsupported options ---
-BLOCKERS='[]'
 MIGRATE_OPTIONS='[]'
+SKIPPED_OPTIONS='[]'
 
 for opt_name in $(echo "$OPTIONS" | jq -r '.[].OptionName'); do
   is_unsupported=false
   for unsupported in "${UNSUPPORTED_OPTIONS[@]}"; do
     if [[ "$opt_name" == "$unsupported" ]]; then
       is_unsupported=true
-      BLOCKERS=$(echo "$BLOCKERS" | jq --arg opt "$opt_name" \
-        '. + [{"option": $opt, "severity": "ERROR", "message": "Not supported in MySQL 8.4. Remove from option group before upgrading."}]')
+      SKIPPED_OPTIONS=$(echo "$SKIPPED_OPTIONS" | jq --arg opt "$opt_name" \
+        '. + [$opt]')
+      echo "WARNING: Option '$opt_name' not supported in MySQL 8.4 — excluding from target option group." >&2
       break
     fi
   done
   if [[ "$is_unsupported" == "false" ]]; then
-    # This option needs to be migrated to the 8.4 option group
     OPT_SETTINGS=$(echo "$OPTIONS" | jq --arg name "$opt_name" '[.[] | select(.OptionName == $name)][0]')
     MIGRATE_OPTIONS=$(echo "$MIGRATE_OPTIONS" | jq --argjson opt "$OPT_SETTINGS" '. + [$opt]')
   fi
 done
 
-BLOCKER_COUNT=$(echo "$BLOCKERS" | jq 'length')
 MIGRATE_COUNT=$(echo "$MIGRATE_OPTIONS" | jq 'length')
-
-# --- If blockers exist, report and exit ---
-if [[ "$BLOCKER_COUNT" -gt 0 ]]; then
-  if [[ "$JSON_OUTPUT" == "true" ]]; then
-    jq -n --arg id "$INSTANCE_ID" --arg og "$OG_NAME" --argjson blockers "$BLOCKERS" \
-      '{instance_id: $id, option_group: $og, action: "blocked", issues: $blockers}'
-  else
-    echo "ERROR: Option group '$OG_NAME' contains unsupported options for MySQL 8.4:" >&2
-    echo "$BLOCKERS" | jq -r '.[] | "  \(.option): \(.message)"' >&2
-    echo "Remove these options before upgrading." >&2
-  fi
-  exit 1
-fi
-
-# --- No options to migrate → still need empty 8.4 option group for custom groups ---
-if [[ "$MIGRATE_COUNT" -eq 0 ]]; then
-  echo "Custom option group with no migratable options. Creating empty MySQL 8.4 option group." >&2
-fi
 
 # --- Create target option group for MySQL 8.4 ---
 if [[ -z "$TARGET_OG" ]]; then
@@ -134,18 +112,22 @@ if [[ -z "$TARGET_OG" ]]; then
 fi
 
 echo "Option Group: $OG_NAME (CUSTOM)" >&2
-echo "Options to migrate: $OPTION_NAMES" >&2
+if [[ "$MIGRATE_COUNT" -gt 0 ]]; then
+  echo "Options to migrate: $(echo "$MIGRATE_OPTIONS" | jq -r '[.[].OptionName] | join(", ")')" >&2
+else
+  echo "No options to migrate (creating empty 8.4 option group)" >&2
+fi
 echo "Target: $TARGET_OG (mysql 8.4)" >&2
 
 if [[ "$DRY_RUN" == "true" ]]; then
   if [[ "$JSON_OUTPUT" == "true" ]]; then
     MIGRATE_NAMES=$(echo "$MIGRATE_OPTIONS" | jq '[.[].OptionName]')
     jq -n --arg id "$INSTANCE_ID" --arg og "$OG_NAME" --arg target "$TARGET_OG" \
-      --argjson names "$MIGRATE_NAMES" \
-      '{instance_id: $id, option_group: $og, action: "migrate", target_option_group: $target, options_to_migrate: $names, dry_run: true}'
+      --argjson migrate "$MIGRATE_NAMES" --argjson skipped "$SKIPPED_OPTIONS" \
+      '{instance_id: $id, option_group: $og, action: "migrate", target_option_group: $target, options_to_migrate: $migrate, options_skipped: $skipped, dry_run: true}'
   else
     if [[ "$MIGRATE_COUNT" -gt 0 ]]; then
-      echo "[DRY RUN] Would create option group '$TARGET_OG' (mysql 8.4) with options: $OPTION_NAMES"
+      echo "[DRY RUN] Would create option group '$TARGET_OG' (mysql 8.4) with options: $(echo "$MIGRATE_OPTIONS" | jq -r '[.[].OptionName] | join(", ")')"
     else
       echo "[DRY RUN] Would create empty option group '$TARGET_OG' (mysql 8.4)"
     fi
@@ -159,7 +141,6 @@ if aws rds describe-option-groups \
   --option-group-name "$TARGET_OG" > /dev/null 2>&1; then
   echo "Target option group '$TARGET_OG' already exists. Skipping creation." >&2
 else
-  # Create the target option group
   aws rds create-option-group \
     ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
     --option-group-name "$TARGET_OG" \
@@ -192,9 +173,10 @@ if [[ "$MIGRATE_COUNT" -gt 0 ]]; then
 fi
 
 if [[ "$JSON_OUTPUT" == "true" ]]; then
+  MIGRATE_NAMES=$(echo "$MIGRATE_OPTIONS" | jq '[.[].OptionName]')
   jq -n --arg id "$INSTANCE_ID" --arg og "$OG_NAME" --arg target "$TARGET_OG" \
-    --argjson opts "$MIGRATE_OPTIONS" \
-    '{instance_id: $id, option_group: $og, action: "migrate", target_option_group: $target, options_migrated: [$opts[].OptionName], dry_run: false}'
+    --argjson migrate "$MIGRATE_NAMES" --argjson skipped "$SKIPPED_OPTIONS" \
+    '{instance_id: $id, option_group: $og, action: "migrate", target_option_group: $target, options_migrated: $migrate, options_skipped: $skipped, dry_run: false}'
 else
   echo "============================================================"
   echo "Option group migrated: $OG_NAME → $TARGET_OG"
