@@ -23,12 +23,22 @@ bash scripts/precheck/mysql_precheck_run.sh \
 ```
 If errors > 0, STOP and report findings. Do not proceed with upgrade.
 
-### Step 2: Prepare Parameter Group
-Check if the instance uses a custom parameter group and migrate if needed:
+### Step 2: Prepare Parameter Group (only if custom)
+If the instance uses a custom parameter group, migrate it to MySQL 8.4. If it uses a default parameter group, skip — RDS auto-assigns `default.mysql8.4`.
 ```bash
 bash scripts/params/prepare_param_group.sh \
   --instance-id <instance_id> --target-family mysql8.4 --json
 ```
+
+### Step 2b: Check Option Group (only if custom)
+If the instance uses a custom option group (e.g., with MARIADB_AUDIT_PLUGIN), create a MySQL 8.4 option group with the same options. If it uses a default option group, skip — RDS auto-assigns `default:mysql-8.4`.
+```bash
+bash scripts/params/check_option_group.sh \
+  --instance-id <instance_id> --json
+```
+- If MEMCACHED is found → ERROR, must remove from option group before upgrade
+- If MARIADB_AUDIT_PLUGIN or other options found → auto-creates a MySQL 8.4 option group with the same options
+- If default option group → skip
 
 ### Step 3: Detect Strategy
 - If instance is a Multi-AZ DB Cluster → use **in-place** (Blue/Green not supported)
@@ -37,10 +47,11 @@ bash scripts/params/prepare_param_group.sh \
 
 ### Step 4a: Blue/Green Path
 ```bash
-# Create deployment
+# Create deployment (add --target-option-group only if custom option group was migrated)
 bash scripts/upgrade/create_blue_green.sh \
   --instance-id <instance_id> --target-version <target_version> \
-  --target-param-group <param_group>
+  --target-param-group <param_group> \
+  [--target-option-group <option_group>]
 
 # Monitor until AVAILABLE
 bash scripts/upgrade/monitor_blue_green.sh \
@@ -53,9 +64,12 @@ bash scripts/upgrade/switchover_blue_green.sh \
 
 ### Step 4b: In-Place Path
 ```bash
+# Add --target-option-group only if custom option group was migrated
 bash scripts/upgrade/in_place_upgrade.sh \
   --instance-id <instance_id> --target-version <target_version> \
-  --target-param-group <param_group> --apply-immediately
+  --target-param-group <param_group> \
+  [--target-option-group <option_group>] \
+  --apply-immediately
 ```
 
 ### Step 5: Validate

@@ -30,6 +30,7 @@ fi
 INSTANCE_ID=""
 TARGET_VERSION=""
 TARGET_PARAM_GROUP=""
+TARGET_OPTION_GROUP=""
 APPLY_IMMEDIATELY=false
 POLL_INTERVAL=60
 TIMEOUT=7200
@@ -40,6 +41,7 @@ while [[ $# -gt 0 ]]; do
     --instance-id) INSTANCE_ID="$2"; shift 2 ;;
     --target-version) TARGET_VERSION="$2"; shift 2 ;;
     --target-param-group) TARGET_PARAM_GROUP="$2"; shift 2 ;;
+    --target-option-group) TARGET_OPTION_GROUP="$2"; shift 2 ;;
     --region) REGION_ARGS=(--region "$2"); shift 2 ;;
     --apply-immediately) APPLY_IMMEDIATELY=true; shift ;;
     --poll-interval) POLL_INTERVAL="$2"; shift 2 ;;
@@ -49,7 +51,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$INSTANCE_ID" || -z "$TARGET_VERSION" ]]; then
-  echo "Usage: $0 --instance-id <id> --target-version <ver> [--target-param-group <group>] [--apply-immediately] [--region <region>]"
+  echo "Usage: $0 --instance-id <id> --target-version <ver> [--target-param-group <group>] [--target-option-group <group>] [--apply-immediately] [--region <region>]"
   exit 1
 fi
 
@@ -296,6 +298,10 @@ MODIFY_ARGS=(
 
 if [[ -n "$TARGET_PARAM_GROUP" ]]; then
   MODIFY_ARGS+=(--db-parameter-group-name "$TARGET_PARAM_GROUP")
+fi
+
+if [[ -n "$TARGET_OPTION_GROUP" ]]; then
+  MODIFY_ARGS+=(--option-group-name "$TARGET_OPTION_GROUP")
 fi
 
 if [[ "$APPLY_IMMEDIATELY" == "true" ]]; then

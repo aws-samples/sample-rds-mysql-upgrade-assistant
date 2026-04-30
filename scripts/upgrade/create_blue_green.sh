@@ -8,7 +8,8 @@
 #
 # Usage:
 #   ./create_blue_green.sh --instance-id <id> --target-version <ver>
-#                          --target-param-group <group> [--region <region>]
+#                          --target-param-group <group> [--target-option-group <group>]
+#                          [--region <region>]
 # ============================================================
 
 set -euo pipefail
@@ -26,6 +27,7 @@ fi
 INSTANCE_ID=""
 TARGET_VERSION=""
 TARGET_PARAM_GROUP=""
+TARGET_OPTION_GROUP=""
 REGION_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -33,20 +35,21 @@ while [[ $# -gt 0 ]]; do
     --instance-id) INSTANCE_ID="$2"; shift 2 ;;
     --target-version) TARGET_VERSION="$2"; shift 2 ;;
     --target-param-group) TARGET_PARAM_GROUP="$2"; shift 2 ;;
+    --target-option-group) TARGET_OPTION_GROUP="$2"; shift 2 ;;
     --region) REGION_ARGS=(--region "$2"); shift 2 ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
 done
 
 if [[ -z "$INSTANCE_ID" || -z "$TARGET_VERSION" || -z "$TARGET_PARAM_GROUP" ]]; then
-  echo "Usage: $0 --instance-id <id> --target-version <ver> --target-param-group <group> [--region <region>]"
+  echo "Usage: $0 --instance-id <id> --target-version <ver> --target-param-group <group> [--target-option-group <group>] [--region <region>]"
   exit 1
 fi
 
 # --- Audit init ---
 if type audit_init &>/dev/null; then
   audit_init "create_blue_green" "$@"
-  audit_log "INFO" "Instance: $INSTANCE_ID, Target: $TARGET_VERSION, ParamGroup: $TARGET_PARAM_GROUP"
+  audit_log "INFO" "Instance: $INSTANCE_ID, Target: $TARGET_VERSION, ParamGroup: $TARGET_PARAM_GROUP, OptionGroup: ${TARGET_OPTION_GROUP:-none}"
 fi
 
 # Get source ARN — try instance first, then cluster (Multi-AZ DB Cluster)
@@ -110,6 +113,9 @@ if [[ "$IS_CLUSTER" == "true" ]]; then
   BG_ARGS+=(--target-db-cluster-parameter-group-name "$TARGET_PARAM_GROUP")
 else
   BG_ARGS+=(--target-db-parameter-group-name "$TARGET_PARAM_GROUP")
+  if [[ -n "$TARGET_OPTION_GROUP" ]]; then
+    BG_ARGS+=(--target-db-instance-option-group-name "$TARGET_OPTION_GROUP")
+  fi
 fi
 
 RESULT=$(aws rds create-blue-green-deployment \
@@ -128,5 +134,6 @@ echo "$RESULT" | jq '{
   source_instance: "'"$INSTANCE_ID"'",
   target_version: "'"$TARGET_VERSION"'",
   target_param_group: "'"$TARGET_PARAM_GROUP"'",
+  target_option_group: "'"${TARGET_OPTION_GROUP:-none}"'",
   created_at: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
 }'
