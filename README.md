@@ -322,6 +322,7 @@ This project includes pre-built Kiro skills in `.kiro/skills/` that automate mul
 | **Upgrade Single Instance** | End-to-end upgrade: precheck → param migration → Blue/Green or in-place → validate |
 | **Batch Upgrade** | Discover → generate config → dry-run → batch upgrade → verify all upgraded |
 | **Precheck Report** | Run prechecks on all instances and generate a fleet-wide readiness report |
+| **Cleanup Deployments** | Find completed Blue/Green deployments, validate, and clean up old environments |
 
 ## Upgrade Workflow
 
