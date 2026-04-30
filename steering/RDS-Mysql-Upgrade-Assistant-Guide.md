@@ -114,6 +114,17 @@ Use `migrate_param_group.sh` from rds-support-tools:
 4. Check for prerequisite parameters (e.g., `innodb_trx_commit_allow_data_loss`)
 
 If multiple instances share the same custom parameter group, migrate once and reuse.
+Instances using default parameter groups don't need migration — RDS auto-assigns `default.mysql8.4`.
+
+## Option Group Migration
+
+Use `check_option_group.sh` to handle custom option groups:
+- **Default option group** → skip (RDS auto-assigns `default:mysql-8.4`)
+- **Custom with MARIADB_AUDIT_PLUGIN** → auto-creates MySQL 8.4 option group with same options
+- **Custom with MEMCACHED** → MEMCACHED excluded (not supported in 8.4), other options migrated
+- **Empty custom group** → creates empty MySQL 8.4 option group
+
+Only instances with custom option groups need migration. Pass the target option group to Blue/Green (`--target-option-group`) or in-place upgrade (`--target-option-group`).
 
 ## Precheck Tool
 
