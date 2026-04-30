@@ -12,7 +12,7 @@ When a customer has 100+ RDS MySQL 8.0 instances that need to upgrade to 8.4, th
 - **Parameter group migration**: Custom parameter groups need to be recreated for the MySQL 8.4 engine family, accounting for removed, renamed, and changed-default parameters.
 - **Upgrade execution**: Blue/Green deployments are the recommended approach for production instances, but creating and managing them for hundreds of instances is operationally intensive.
 - **Validation**: After each upgrade, the database engine version, connectivity, replication health, and parameter group status must be verified.
-- **Rollback planning**: If issues arise post-upgrade, a clear rollback path must be available.
+- **Rollback planning**: If issues arise post-upgrade, reverting requires restoring from a snapshot or PITR — both create a new instance. There is no in-place downgrade or reverse switchover.
 
 Existing tools address parts of this problem. MySQL Shell's `util.checkForServerUpgrade()` performs compatibility checks but requires MySQL Shell installation and connectivity. The RDS built-in PrePatchCompatibility check only runs when you actually initiate the upgrade — if it fails, you've already committed to a maintenance window. Neither tool addresses the end-to-end orchestration needed for batch upgrades.
 
@@ -54,7 +54,15 @@ For each instance, the tool follows a nine-step workflow:
 
 ### The precheck engine
 
-The precheck engine is the core differentiator. It runs 19 checks as pure SQL, requiring only a standard `mysql` client — no MySQL Shell installation needed. The checks are organized in two phases:
+The precheck engine helps identify compatibility issues *before* committing to an upgrade. It runs 19 checks as pure SQL, requiring only a standard `mysql` client — no MySQL Shell installation needed.
+
+**Important positioning**: This precheck is based on MySQL Shell's `util.checkForServerUpgrade()` logic, adapted for standard MySQL client execution. It serves as a *pre-screening tool* to catch common issues early — not as a replacement for the RDS internal PrePatchCompatibility check that runs automatically when you initiate an upgrade. The RDS internal check may cover additional engine-specific validations not included here. We recommend:
+
+1. Run this precheck first to identify and fix known issues proactively
+2. Fix all ERROR-level findings before initiating the upgrade
+3. If the RDS upgrade still fails with a PrePatchCompatibility error, review the RDS event log for details not covered by this tool
+
+The checks are organized in two phases:
 
 **Phase 1** (read-only, safe for production) runs 19 checks including:
 
@@ -297,13 +305,65 @@ When using this solution, keep the following best practices in mind:
 
 - **Start with non-production environments.** Upgrade dev and staging instances first to identify issues before touching production.
 - **Always run precheck first.** Use `--dry-run` mode to validate all instances before committing to upgrades. Fix all ERROR-level findings before proceeding.
-- **Use Blue/Green for production.** Blue/Green deployments provide minimal downtime (~30 seconds) and a safe rollback path. Reserve in-place upgrades for non-production instances where downtime is acceptable. Note: Blue/Green deployments are not supported for instances with cross-Region read replicas — use in-place upgrade for those instances.
+- **Use Blue/Green for production.** Blue/Green deployments provide minimal downtime (~30 seconds) during switchover. Note that switchover is a one-way operation — there is no reverse switchover. After switchover, the old blue instance is retained with a renamed identifier; to revert, you must restore from a snapshot or use Point-in-Time Recovery (PITR), both of which create a new instance. Reserve in-place upgrades for non-production instances where downtime is acceptable. Note: Blue/Green deployments are not supported for instances with cross-Region read replicas — use in-place upgrade for those instances.
 - **Read replicas are upgraded first.** When performing an in-place upgrade on an instance with read replicas, the tool automatically upgrades all replicas before the primary to maintain replication compatibility.
 - **Run precheck on the green environment.** After the Blue/Green deployment is created, run the precheck again on the green environment to verify the upgrade succeeded cleanly.
-- **Keep blue environments temporarily.** After switchover, retain the blue environment for 24–48 hours as a rollback safety net before cleanup.
+- **Keep blue environments temporarily.** After switchover, retain the old blue instance for 24–48 hours. While there is no reverse switchover, having the old instance available aids investigation if issues arise. To revert, restore from a pre-upgrade snapshot or use PITR.
 - **Monitor parameter group changes.** Review the `migrate_param_group.sh` report carefully. Some parameters have changed defaults in MySQL 8.4 (e.g., `innodb_adaptive_hash_index` defaults to OFF) that may affect workload performance.
 - **Note on `mysql_native_password`.** RDS MySQL 8.4 uses `caching_sha2_password` as the default authentication plugin. The `mysql_native_password` plugin is still available in 8.4 but deprecated and will be removed in a future version. Existing accounts using `mysql_native_password` will continue to work after upgrade. To change the default authentication plugin, create a custom parameter group and modify the `authentication_policy` parameter. Long-term, plan to migrate accounts to `caching_sha2_password`.
 - **Manage concurrency carefully.** For Blue/Green deployments, 3–5 concurrent upgrades is a reasonable starting point. Monitor your account's RDS service quotas and CloudWatch metrics during batch execution.
+
+## Addressing the hard parts: remediation and application validation
+
+The automation above handles the operational workflow, but the genuinely hard parts of a major version upgrade are (1) fixing precheck findings and (2) validating applications after upgrade. This section addresses both.
+
+### Working through precheck findings at scale
+
+After running prechecks across your fleet, you'll likely see common patterns. The included [remediation playbook](docs/remediation-playbook.md) provides specific fix steps for each finding type. Here's the recommended approach:
+
+1. **Categorize findings across the fleet.** Most instances share the same findings (e.g., `sysVarsNewDefaults` warnings appear on nearly every instance). Group by finding type rather than by instance.
+
+2. **Fix ERROR findings first — they block the upgrade.** Common blockers include:
+   - `authentication_fido` accounts → migrate to `caching_sha2_password`
+   - FLOAT/DOUBLE AUTO_INCREMENT columns → change to INT/BIGINT
+   - `daemon_memcached` plugin → uninstall before upgrade
+   - User tables in `sys` schema → move to a user schema
+
+3. **Assess WARNING findings by impact.** Not all warnings require action:
+   - `sysVarsNewDefaults` — Review the [parameter default changes table](docs/remediation-playbook.md) and decide whether to preserve old behavior or accept new defaults
+   - `mysql_native_password` — Not a blocker on RDS MySQL 8.4 (still enabled), but plan long-term migration
+   - `binlog_format` STATEMENT/MIXED — Must change to ROW before upgrade
+
+4. **Apply fixes in bulk.** For schema changes that affect multiple instances sharing the same schema, fix once and verify on a test instance before rolling out.
+
+### Application validation after upgrade
+
+The tool's built-in validation (`post_upgrade_validate.sh`) checks infrastructure health — engine version, instance status, replication, parameter groups, and MySQL connectivity. However, **application-level validation is the real bottleneck** and varies by workload.
+
+To address this, the tool includes an application validation template (`scripts/validate/app_validate_template.sql`) that you customize with your critical queries:
+
+1. **Copy and customize the template:**
+```bash
+cp scripts/validate/app_validate_template.sql scripts/validate/app_validate.sql
+# Edit app_validate.sql with your application's critical queries
+```
+
+2. **Define validation queries in five categories:**
+   - **Critical read queries** — Your most important SELECT statements
+   - **Stored procedure tests** — CALL each critical procedure and verify results
+   - **Authentication checks** — Verify application users can connect with expected auth plugins
+   - **Character set validation** — Confirm charset/collation behavior
+   - **Performance baselines** — Time key queries and compare to pre-upgrade baselines
+
+3. **Run against the green environment BEFORE switchover:**
+```bash
+mysql --ssl-mode=REQUIRED -h <green-endpoint> -u <user> -p --batch \
+  < scripts/validate/app_validate.sql
+```
+
+4. **Run again after switchover** to confirm production behavior matches.
+
+This approach puts application teams in control of their validation criteria while the tool handles the operational orchestration.
 
 ## Clean up
 

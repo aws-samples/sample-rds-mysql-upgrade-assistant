@@ -63,7 +63,9 @@ Requires `uv` — install via `curl -LsSf https://astral.sh/uv/install.sh | sh` 
 - Creates a staging (green) copy of your database
 - Upgrades the green environment to 8.4
 - Switchover swaps endpoints with minimal downtime (~30s)
-- Blue environment retained for rollback
+- **Switchover is a one-way operation** — there is no reverse switchover
+- Old blue instance retained with renamed identifier for investigation
+- To revert: restore from pre-upgrade snapshot or use PITR (creates a new instance)
 - Requires: instance must be eligible for B/G (no unsupported features)
 - **Not supported for instances with cross-Region read replicas** — use in-place upgrade instead
 
@@ -134,9 +136,13 @@ After upgrade, verify:
 ## Rollback
 
 ### Blue/Green
+- **Switchover is a one-way operation** — there is no reverse switchover via the B/G deployment
 - After switchover, the old blue instance still exists with a renamed identifier (e.g., `-old1` suffix)
-- A reverse switchover via the B/G deployment is NOT supported once switchover completes
-- To rollback: rename the old blue instance back to the original identifier (requires renaming the current primary first to avoid conflicts), or use Point-in-Time Recovery (PITR)
+- The old blue instance is useful for investigation but cannot be switched back to
+- To revert to MySQL 8.0:
+  - **Restore from snapshot**: Restore the pre-upgrade manual snapshot. This creates a new RDS instance with the old version.
+  - **Point-in-Time Recovery (PITR)**: Restore to a point before the switchover. Requires automated backups enabled.
+- Both options create a new instance — you must update application connection strings
 - Delete the B/G deployment only after confirming the upgrade is successful
 
 ### In-Place

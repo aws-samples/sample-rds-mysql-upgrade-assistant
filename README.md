@@ -371,6 +371,8 @@ For each instance, the tool follows 9 steps:
 - [Amazon RDS MySQL 8.0 to 8.4 Prechecks](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.MySQL.Major.html)
 - [RDS Blue/Green Deployments](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments.html)
 - [Parameter Group Migration Tool](https://github.com/awslabs/rds-support-tools/blob/main/rds-general/shell/migrate_param_group.sh)
+- [Remediation Playbook](docs/remediation-playbook.md) — Fix steps for each precheck finding
+- [Application Validation Template](scripts/validate/app_validate_template.sql) — Customize with your critical queries
 
 ## License
 
