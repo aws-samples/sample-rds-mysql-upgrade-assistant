@@ -149,11 +149,14 @@ After upgrade, verify:
 ### Blue/Green
 - **Switchover is a one-way operation** — there is no reverse switchover via the B/G deployment
 - After switchover, the old blue instance still exists with a renamed identifier (e.g., `-old1` suffix)
-- The old blue instance is useful for investigation but cannot be switched back to
-- To revert to MySQL 8.0:
-  - **Restore from snapshot**: Restore the pre-upgrade manual snapshot. This creates a new RDS instance with the old version.
-  - **Point-in-Time Recovery (PITR)**: Restore to a point before the switchover. Requires automated backups enabled.
-- Both options create a new instance — you must update application connection strings
+- To revert to MySQL 8.0 (fastest method):
+  1. Delete the B/G deployment without deleting the old blue instance
+  2. Rename the current green instance (e.g., `mydb` → `mydb-green`)
+  3. Rename the old blue instance back to the original name (e.g., `mydb-old1` → `mydb`)
+  4. Applications reconnect to the original endpoint automatically
+- Alternative revert methods:
+  - **Restore from snapshot**: Restore the pre-upgrade manual snapshot (creates a new instance)
+  - **Point-in-Time Recovery (PITR)**: Restore to a point before the switchover
 - Delete the B/G deployment only after confirming the upgrade is successful
 
 ### In-Place
