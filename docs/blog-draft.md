@@ -329,22 +329,51 @@ The automation above handles the operational workflow, but the genuinely hard pa
 
 ### Working through precheck findings at scale
 
-After running prechecks across your fleet, you'll likely see common patterns. The included [remediation playbook](docs/remediation-playbook.md) provides specific fix steps for each finding type. Here's the recommended approach:
+After running prechecks across your fleet, you'll likely see common patterns. The included [remediation playbook](https://code.amazon.com/packages/Rds-Mysql-Upgrade-Assistant/blobs/main/--/docs/remediation-playbook.md) provides specific fix steps for every finding type. Here's the recommended approach:
 
 1. **Categorize findings across the fleet.** Most instances share the same findings (e.g., `sysVarsNewDefaults` warnings appear on nearly every instance). Group by finding type rather than by instance.
 
-2. **Fix ERROR findings first — they block the upgrade.** Common blockers include:
-   - `authentication_fido` accounts → migrate to `caching_sha2_password`
-   - FLOAT/DOUBLE AUTO_INCREMENT columns → change to INT/BIGINT
-   - `daemon_memcached` plugin → remove from option group before upgrade (MySQL 8.4 does not support MEMCACHED)
-   - User tables in `sys` schema → move to a user schema
+2. **Fix ERROR findings first — they block the upgrade.** The most common blockers and their fixes:
+
+   **`authentication_fido` accounts (Check #5)** — Must migrate before upgrade:
+   ```sql
+   -- Identify affected accounts
+   SELECT User, Host, plugin FROM mysql.user WHERE plugin = 'authentication_fido';
+   -- Migrate each account
+   ALTER USER 'username'@'host' IDENTIFIED WITH caching_sha2_password BY 'new_password';
+   ```
+
+   **FLOAT/DOUBLE with AUTO_INCREMENT (Check #9)** — Change column type:
+   ```sql
+   -- Find affected columns
+   SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, COLUMN_TYPE
+   FROM information_schema.COLUMNS
+   WHERE COLUMN_TYPE IN ('float', 'double') AND EXTRA = 'auto_increment'
+     AND TABLE_SCHEMA NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys');
+   -- Fix
+   ALTER TABLE `schema`.`table` MODIFY COLUMN `col` BIGINT AUTO_INCREMENT;
+   ```
+
+   **`daemon_memcached` plugin (Check #14)** — Remove from option group (MySQL 8.4 does not support MEMCACHED). See [MySQL Options for RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.MySQL.Options.html).
+
+   **User tables in `sys` schema (Check #15)** — Move to a user schema:
+   ```sql
+   RENAME TABLE sys.my_table TO my_schema.my_table;
+   ```
 
 3. **Assess WARNING findings by impact.** Not all warnings require action:
-   - `sysVarsNewDefaults` — Review the [parameter default changes table](docs/remediation-playbook.md) and decide whether to preserve old behavior or accept new defaults
-   - `mysql_native_password` — Not a blocker on RDS MySQL 8.4 (still enabled), but plan long-term migration
-   - `binlog_format` STATEMENT/MIXED — Must change to ROW before upgrade
+
+   | Finding | Action Required? | Recommendation |
+   |---------|-----------------|----------------|
+   | `sysVarsNewDefaults` | Usually no | Review [default changes table](https://code.amazon.com/packages/Rds-Mysql-Upgrade-Assistant/blobs/main/--/docs/remediation-playbook.md). Most new defaults are improvements. |
+   | `mysql_native_password` | No (on RDS) | Still enabled in RDS MySQL 8.4. Plan long-term migration to `caching_sha2_password`. |
+   | `binlog_format` STATEMENT/MIXED | Yes | Must change to ROW. Set in parameter group. |
+   | `foreignKeyReferences` | Review | Add unique index on referenced columns if needed. |
+   | `nonInclusiveLanguage` | Recommended | Update stored procedures to use inclusive terms (REPLICA instead of SLAVE). |
 
 4. **Apply fixes in bulk.** For schema changes that affect multiple instances sharing the same schema, fix once and verify on a test instance before rolling out.
+
+For the complete list of remediation steps for all 19 checks, see the [full remediation playbook](https://code.amazon.com/packages/Rds-Mysql-Upgrade-Assistant/blobs/main/--/docs/remediation-playbook.md).
 
 ### Application validation after upgrade
 
