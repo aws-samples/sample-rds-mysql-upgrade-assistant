@@ -248,7 +248,7 @@ The generator discovers all MySQL 8.0 instances and automatically assigns the co
 - **Multi-AZ DB Clusters** → `in_place` (Blue/Green not supported)
 - **Instances with cross-region replicas** → `in_place` (Blue/Green not supported)
 - **Standard instances** → `blue_green` (recommended)
-- **Read replicas** → skipped (upgraded with their primary)
+- **Read replicas** → not listed separately (included automatically in the primary's Blue/Green deployment)
 
 Review and adjust the generated config. A typical output looks like:
 

@@ -190,7 +190,7 @@ Auto-generate a batch config from your current instances:
 The generator automatically:
 - Detects Multi-AZ DB Clusters → assigns `in_place` (Blue/Green not supported)
 - Detects cross-region replicas → assigns `in_place`
-- Skips read replicas (handled with their primary)
+- Read replicas are not listed separately (included automatically in the primary's Blue/Green deployment)
 - Standard instances → assigns `blue_green`
 
 Review and edit the generated config, then run:
