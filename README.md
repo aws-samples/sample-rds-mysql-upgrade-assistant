@@ -313,6 +313,16 @@ Once connected, use natural language:
 - "Check the status of Blue/Green deployment bgd-xxx"
 - "Run batch upgrade with config examples/batch_config.yaml in dry-run mode"
 
+### Kiro Skills (Reusable Workflows)
+
+This project includes pre-built Kiro skills in `.kiro/skills/` that automate multi-step workflows. Use them by typing `#` in Kiro chat and selecting the skill:
+
+| Skill | Description |
+|-------|-------------|
+| **Upgrade Single Instance** | End-to-end upgrade: precheck → param migration → Blue/Green or in-place → validate |
+| **Batch Upgrade** | Discover → generate config → dry-run → batch upgrade → verify all upgraded |
+| **Precheck Report** | Run prechecks on all instances and generate a fleet-wide readiness report |
+
 ## Upgrade Workflow
 
 For each instance, the tool follows 9 steps:
