@@ -350,7 +350,7 @@ After running prechecks across your fleet, you'll likely see common patterns. Th
 
 The tool's built-in validation (`post_upgrade_validate.sh`) checks infrastructure health — engine version, instance status, replication, parameter groups, and MySQL connectivity. However, **application-level validation is the real bottleneck** and varies by workload.
 
-To address this, the tool includes an application validation template (`scripts/validate/app_validate_template.sql`) that you customize with your critical queries:
+To address this, the tool includes an application validation runner (`scripts/validate/app_validate_run.sh`) and a template (`scripts/validate/app_validate_template.sql`) that you customize with your critical queries:
 
 1. **Copy and customize the template:**
 ```bash
@@ -365,15 +365,21 @@ cp scripts/validate/app_validate_template.sql scripts/validate/app_validate.sql
    - **Character set validation** — Confirm charset/collation behavior
    - **Performance baselines** — Time key queries and compare to pre-upgrade baselines
 
-3. **Run against the green environment BEFORE switchover:**
+3. **Run automatically against any instance:**
 ```bash
-mysql --ssl-mode=REQUIRED -h <green-endpoint> -u <user> -p --batch \
-  < scripts/validate/app_validate.sql
+bash scripts/validate/app_validate_run.sh \
+  -h <endpoint> -u <user> --secret-id <secret_id> --json
 ```
+The runner automatically executes all `app_validate*.sql` files and reports structured PASS/FAIL/WARNING results. You can create multiple files (e.g., `app_validate_orders.sql`, `app_validate_auth.sql`) for different validation domains.
 
-4. **Run again after switchover** to confirm production behavior matches.
+4. **Run against the green environment BEFORE switchover** to catch issues before production traffic is affected.
 
-This approach puts application teams in control of their validation criteria while the tool handles the operational orchestration.
+5. **Run fleet-wide after batch upgrade:**
+```bash
+for endpoint in $(bash scripts/inventory/discover_instances.sh --version-prefix 8.4 --json | jq -r '.[].endpoint'); do
+  bash scripts/validate/app_validate_run.sh -h "$endpoint" -u admin --secret-id <secret_id> --json
+done
+```
 
 ## Clean up
 

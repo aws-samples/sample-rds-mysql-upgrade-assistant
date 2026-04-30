@@ -327,6 +327,7 @@ This project includes pre-built Kiro skills in `.kiro/skills/` that automate mul
 | **Batch Upgrade** | Discover → generate config → dry-run → batch upgrade → verify all upgraded |
 | **Precheck Report** | Run prechecks on all instances and generate a fleet-wide readiness report |
 | **Cleanup Deployments** | Find completed Blue/Green deployments, validate, and clean up old environments |
+| **Application Validation** | Run custom app-level SQL checks against instances after upgrade |
 
 ## Upgrade Workflow
 

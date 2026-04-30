@@ -136,13 +136,22 @@ Run `mysql_precheck_run.sh` before every upgrade:
 
 ## Post-Upgrade Validation
 
-After upgrade, verify:
+After upgrade, verify infrastructure and application health:
+
+### Infrastructure checks (`post_upgrade_validate.sh`):
 1. Engine version is 8.4.x
 2. Instance status is 'available'
 3. MySQL connectivity works
 4. Read Replicas are healthy
 5. Parameter group is in-sync
-6. Application queries work correctly
+
+### Application checks (`app_validate_run.sh`):
+Customize `app_validate.sql` with your critical queries, then run:
+```bash
+bash scripts/validate/app_validate_run.sh \
+  -h <endpoint> -u <user> --secret-id <secret_id> --json
+```
+Automatically executes all `app_validate*.sql` files and reports PASS/FAIL/WARNING per check.
 
 ## Rollback
 

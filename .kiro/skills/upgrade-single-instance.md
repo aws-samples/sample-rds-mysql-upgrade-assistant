@@ -72,12 +72,25 @@ bash scripts/upgrade/in_place_upgrade.sh \
   --apply-immediately
 ```
 
-### Step 5: Validate
+### Step 5: Infrastructure Validation
 ```bash
 bash scripts/validate/post_upgrade_validate.sh \
   --instance-id <instance_id> --expected-version <target_version> --json
 ```
 Report the validation results. All checks should be PASS.
+
+### Step 5b: Application Validation
+If the user has customized `scripts/validate/app_validate.sql`, run application-level checks:
+```bash
+bash scripts/validate/app_validate_run.sh \
+  -h <endpoint> -u <user> --secret-id <secret_id> --json
+```
+This automatically runs all `app_validate*.sql` files and reports results.
+If no custom SQL files exist, remind the user to copy and customize the template:
+```bash
+cp scripts/validate/app_validate_template.sql scripts/validate/app_validate.sql
+# Edit app_validate.sql with application-specific queries
+```
 
 ### Step 6: Cleanup (Blue/Green only)
 After confirming upgrade is successful (recommend waiting 24-48 hours):
