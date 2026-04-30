@@ -88,6 +88,7 @@ Requires `uv` — install via `curl -LsSf https://astral.sh/uv/install.sh | sh` 
 ### Removed Features
 - `authentication_fido` plugin removed (use `authentication_webauthn`)
 - `keyring_file/encrypted_file/oci` plugins removed (use component equivalents)
+- `daemon_memcached` plugin removed (no replacement — MEMCACHED not supported in 8.4)
 - Query cache completely removed
 
 ### Parameter Default Changes
@@ -111,7 +112,6 @@ Use `migrate_param_group.sh` from rds-support-tools:
 1. Always dry-run first: `-n` flag
 2. Review incompatible parameters (not in target engine)
 3. Review skipped parameters (not modifiable in target)
-4. Check for prerequisite parameters (e.g., `innodb_trx_commit_allow_data_loss`)
 
 If multiple instances share the same custom parameter group, migrate once and reuse.
 Instances using default parameter groups don't need migration — RDS auto-assigns `default.mysql8.4`.
