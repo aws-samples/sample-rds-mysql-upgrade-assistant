@@ -10,6 +10,7 @@ When a customer has 100+ RDS MySQL 8.0 instances that need to upgrade to 8.4, th
 
 - **Compatibility assessment**: Each instance may have different schemas, stored procedures, authentication configurations, and parameter settings that could conflict with MySQL 8.4 changes.
 - **Parameter group migration**: Custom parameter groups need to be recreated for the MySQL 8.4 engine family, accounting for removed, renamed, and changed-default parameters.
+- **Option group migration**: Custom option groups (e.g., with MARIADB_AUDIT_PLUGIN) must be recreated for MySQL 8.4. Options not supported in 8.4 (such as MEMCACHED) need to be excluded.
 - **Upgrade execution**: Blue/Green deployments are the recommended approach for production instances, but creating and managing them for hundreds of instances is operationally intensive.
 - **Validation**: After each upgrade, the database engine version, connectivity, replication health, and parameter group status must be verified.
 - **Rollback planning**: If issues arise post-upgrade, reverting requires restoring from a snapshot or PITR — both create a new instance. There is no in-place downgrade or reverse switchover.
@@ -85,6 +86,15 @@ Three checks are automatically skipped for RDS-managed items (`removedSysVars`, 
 When upgrading from MySQL 8.0 to 8.4, custom parameter groups must be recreated for the new engine family. The tool integrates [`migrate_param_group.sh`](https://github.com/awslabs/rds-support-tools/blob/main/rds-general/shell/migrate_param_group.sh) from the AWS RDS Support Tools repository to automate this process. It copies user-modified parameters from the source 8.0 group to a new 8.4 group, handling version differences automatically.
 
 When multiple instances share the same custom parameter group, the batch orchestrator creates the target group only once and reuses it — avoiding redundant API calls and ensuring consistency.
+
+### Option group migration
+
+In addition to parameter groups, instances using custom option groups also need migration. RDS does not automatically upgrade custom option groups to the new engine version. The tool's `check_option_group.sh` handles this:
+
+- **Default option group** — No action needed. RDS auto-assigns `default:mysql-8.4` during upgrade.
+- **Custom option group with MARIADB_AUDIT_PLUGIN** — Creates a new MySQL 8.4 option group and adds the same audit plugin. The target option group is then passed to the Blue/Green deployment (`--target-db-instance-option-group-name`) or in-place upgrade (`--option-group-name`).
+- **Custom option group with MEMCACHED** — The MEMCACHED option is not supported in MySQL 8.4 and is automatically excluded from the target option group. This does not block the upgrade.
+- **Empty custom option group** — A new empty MySQL 8.4 option group is still created, since RDS requires an explicit option group association for custom configurations.
 
 ### Batch orchestration
 
