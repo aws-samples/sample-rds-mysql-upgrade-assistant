@@ -36,6 +36,18 @@ The generator auto-detects:
 
 Show the generated config to the user for review before proceeding.
 
+### Step 2b: Check Option Groups
+For each instance with a custom option group, check and migrate:
+```bash
+# For each instance in the config
+bash scripts/params/check_option_group.sh --instance-id <instance_id> --dry-run --json
+```
+- Default option group → skip (RDS auto-assigns `default:mysql-8.4`)
+- Custom with MARIADB_AUDIT_PLUGIN → auto-creates MySQL 8.4 option group with same options
+- Custom with MEMCACHED → excluded (warning only, not a blocker)
+
+Add `--target-option-group` to the batch config for instances that need it.
+
 ### Step 3: Dry Run
 ```bash
 bash scripts/batch/batch_upgrade.sh --config batch_config.yaml --dry-run

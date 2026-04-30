@@ -36,7 +36,7 @@ If the instance uses a custom option group (e.g., with MARIADB_AUDIT_PLUGIN), cr
 bash scripts/params/check_option_group.sh \
   --instance-id <instance_id> --json
 ```
-- If MEMCACHED is found → ERROR, must remove from option group before upgrade
+- If MEMCACHED is found → warning only, excluded from target option group (not a blocker)
 - If MARIADB_AUDIT_PLUGIN or other options found → auto-creates a MySQL 8.4 option group with the same options
 - If default option group → skip
 
