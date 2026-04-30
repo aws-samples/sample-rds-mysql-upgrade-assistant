@@ -154,11 +154,15 @@ cd Rds-Mysql-Upgrade-Assistant
 # Note: Avoid using MYSQL_PWD — it is deprecated in MySQL 8.0 and considered insecure.
 ```
 
-### 3. Migrate parameter group
+### 3. Migrate parameter group and option group
 
 ```bash
+# Parameter group (only if custom)
 ./scripts/params/migrate_param_group.sh \
   -s my-mysql80-params -t my-mysql84-params -f mysql8.4 -n  # dry run first
+
+# Option group (only if custom — e.g., with MARIADB_AUDIT_PLUGIN)
+./scripts/params/check_option_group.sh --instance-id my-db --dry-run --json
 ```
 
 ### 4. Create Blue/Green deployment
@@ -330,7 +334,7 @@ For each instance, the tool follows 9 steps:
 
 1. **Discover** — Find MySQL 8.0 instances (`discover_instances.sh`)
 2. **Precheck** — Run 19-check compatibility analysis (`mysql_precheck_run.sh`)
-3. **Migrate params** — Create 8.4 parameter group from 8.0 (`migrate_param_group.sh`)
+3. **Migrate params & options** — Create 8.4 parameter group from 8.0 (`migrate_param_group.sh`), migrate custom option groups (`check_option_group.sh`)
 4. **Create B/G** — Create Blue/Green deployment (`create_blue_green.sh`)
    - **Note:** Blue/Green is not supported for instances with cross-Region read replicas. Use in-place upgrade for those instances.
 5. **Monitor** — Wait for green environment ready (`monitor_blue_green.sh`)
