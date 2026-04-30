@@ -326,7 +326,7 @@ After running prechecks across your fleet, you'll likely see common patterns. Th
 2. **Fix ERROR findings first — they block the upgrade.** Common blockers include:
    - `authentication_fido` accounts → migrate to `caching_sha2_password`
    - FLOAT/DOUBLE AUTO_INCREMENT columns → change to INT/BIGINT
-   - `daemon_memcached` plugin → uninstall before upgrade
+   - `daemon_memcached` plugin → remove from option group before upgrade (MySQL 8.4 does not support MEMCACHED)
    - User tables in `sys` schema → move to a user schema
 
 3. **Assess WARNING findings by impact.** Not all warnings require action:

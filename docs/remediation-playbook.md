@@ -56,11 +56,14 @@ ALTER TABLE `schema`.`table` MODIFY COLUMN `col` BIGINT AUTO_INCREMENT;
 
 **Finding:** `daemon_memcached` plugin is active.
 
-**Remediation:**
-```sql
--- Uninstall the plugin before upgrade
-UNINSTALL PLUGIN daemon_memcached;
-```
+**Remediation:** MySQL 8.4 does not support the MEMCACHED plugin. You cannot uninstall it via SQL (`UNINSTALL PLUGIN` is not supported for this plugin on RDS). Instead, remove the `MEMCACHED` option from the instance's option group before upgrading:
+
+1. Go to the RDS Console → Option Groups
+2. Find the option group associated with the instance
+3. Remove the `MEMCACHED` option
+4. Apply the change (may require a reboot)
+
+See [MySQL Options for RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.MySQL.Options.html) for details.
 
 ### Check #15: sysSchemaObjects
 
