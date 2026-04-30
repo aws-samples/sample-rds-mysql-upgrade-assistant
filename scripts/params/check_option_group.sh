@@ -123,16 +123,9 @@ if [[ "$BLOCKER_COUNT" -gt 0 ]]; then
   exit 1
 fi
 
-# --- No options to migrate → skip ---
+# --- No options to migrate → still need empty 8.4 option group for custom groups ---
 if [[ "$MIGRATE_COUNT" -eq 0 ]]; then
-  if [[ "$JSON_OUTPUT" == "true" ]]; then
-    jq -n --arg id "$INSTANCE_ID" --arg og "$OG_NAME" \
-      '{instance_id: $id, option_group: $og, action: "skip", reason: "Custom option group has no options to migrate."}'
-  else
-    echo "Option Group: $OG_NAME (CUSTOM, no options to migrate)"
-    echo "Action: SKIP"
-  fi
-  exit 0
+  echo "Custom option group with no migratable options. Creating empty MySQL 8.4 option group." >&2
 fi
 
 # --- Create target option group for MySQL 8.4 ---
@@ -146,12 +139,16 @@ echo "Target: $TARGET_OG (mysql 8.4)" >&2
 
 if [[ "$DRY_RUN" == "true" ]]; then
   if [[ "$JSON_OUTPUT" == "true" ]]; then
+    MIGRATE_NAMES=$(echo "$MIGRATE_OPTIONS" | jq '[.[].OptionName]')
     jq -n --arg id "$INSTANCE_ID" --arg og "$OG_NAME" --arg target "$TARGET_OG" \
-      --argjson options "$MIGRATE_OPTIONS" \
-      '{instance_id: $id, option_group: $og, action: "migrate", target_option_group: $target, options_to_migrate: [.options[].OptionName], dry_run: true}' \
-      | jq --argjson opts "$MIGRATE_OPTIONS" '.options_to_migrate = [$opts[].OptionName]'
+      --argjson names "$MIGRATE_NAMES" \
+      '{instance_id: $id, option_group: $og, action: "migrate", target_option_group: $target, options_to_migrate: $names, dry_run: true}'
   else
-    echo "[DRY RUN] Would create option group '$TARGET_OG' (mysql 8.4) with options: $OPTION_NAMES"
+    if [[ "$MIGRATE_COUNT" -gt 0 ]]; then
+      echo "[DRY RUN] Would create option group '$TARGET_OG' (mysql 8.4) with options: $OPTION_NAMES"
+    else
+      echo "[DRY RUN] Would create empty option group '$TARGET_OG' (mysql 8.4)"
+    fi
   fi
   exit 0
 fi
@@ -176,25 +173,23 @@ else
   echo "Created option group: $TARGET_OG" >&2
 fi
 
-# --- Add options to target group ---
-for opt_name in $(echo "$MIGRATE_OPTIONS" | jq -r '.[].OptionName'); do
-  # Build option settings from source
-  OPT_SETTINGS=$(echo "$MIGRATE_OPTIONS" | jq -r --arg name "$opt_name" \
-    '[.[] | select(.OptionName == $name)][0].OptionSettings // []')
+# --- Add options to target group (if any) ---
+if [[ "$MIGRATE_COUNT" -gt 0 ]]; then
+  for opt_name in $(echo "$MIGRATE_OPTIONS" | jq -r '.[].OptionName'); do
+    ADD_ARGS=(
+      ${REGION_ARGS[@]+"${REGION_ARGS[@]}"}
+      --option-group-name "$TARGET_OG"
+      --options-to-include "OptionName=$opt_name"
+      --apply-immediately
+    )
 
-  ADD_ARGS=(
-    ${REGION_ARGS[@]+"${REGION_ARGS[@]}"}
-    --option-group-name "$TARGET_OG"
-    --options-to-include "OptionName=$opt_name"
-    --apply-immediately
-  )
-
-  aws rds modify-option-group "${ADD_ARGS[@]}" --output json > /dev/null 2>&1 || {
-    echo "WARNING: Failed to add option '$opt_name' to '$TARGET_OG'. May need manual configuration." >&2
-    continue
-  }
-  echo "  Added option: $opt_name" >&2
-done
+    aws rds modify-option-group "${ADD_ARGS[@]}" --output json > /dev/null 2>&1 || {
+      echo "WARNING: Failed to add option '$opt_name' to '$TARGET_OG'. May need manual configuration." >&2
+      continue
+    }
+    echo "  Added option: $opt_name" >&2
+  done
+fi
 
 if [[ "$JSON_OUTPUT" == "true" ]]; then
   jq -n --arg id "$INSTANCE_ID" --arg og "$OG_NAME" --arg target "$TARGET_OG" \
