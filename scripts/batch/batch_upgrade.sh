@@ -188,6 +188,57 @@ migrate_param_group_once() {
   PARAM_GROUP_MAP[$source_pg]="$target_pg"
 }
 
+# --- Option group dedup ---
+declare -A OPTION_GROUP_MAP  # source_og -> target_og name
+
+migrate_option_group_once() {
+  local instance_id="$1"
+  if [[ -z "$instance_id" ]]; then return; fi
+
+  # Get current option group
+  local source_og
+  source_og=$(aws rds describe-db-instances ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+    --db-instance-identifier "$instance_id" \
+    --query 'DBInstances[0].OptionGroupMemberships[0].OptionGroupName' \
+    --output text 2>/dev/null || echo "")
+
+  # Skip default option groups
+  if [[ -z "$source_og" || "$source_og" == default:* || "$source_og" == "None" ]]; then
+    return
+  fi
+
+  # Already migrated this option group
+  if [[ -n "${OPTION_GROUP_MAP[$source_og]:-}" ]]; then
+    log_info "Option group '$source_og' already migrated to '${OPTION_GROUP_MAP[$source_og]}'"
+    return
+  fi
+
+  log_step "Migrating option group: $source_og"
+
+  local check_script="$SCRIPT_DIR/params/check_option_group.sh"
+  if [[ ! -f "$check_script" ]]; then
+    log_warn "check_option_group.sh not found. Skipping option group migration."
+    return
+  fi
+
+  local og_args=(--instance-id "$instance_id")
+  [[ -n "${REGION:-}" ]] && og_args+=(--region "$REGION")
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    og_args+=(--dry-run)
+  fi
+
+  local og_result
+  og_result=$("$check_script" "${og_args[@]}" --json 2>/dev/null) || true
+  local target_og
+  target_og=$(echo "$og_result" | jq -r '.target_option_group // empty' 2>/dev/null)
+
+  if [[ -n "$target_og" ]]; then
+    OPTION_GROUP_MAP[$source_og]="$target_og"
+    log_info "Option group '$source_og' → '$target_og'"
+  fi
+}
+
 # --- Upgrade single instance ---
 upgrade_instance() {
   local idx="$1"
@@ -245,13 +296,25 @@ upgrade_instance() {
   fi
   local target_pg="${PARAM_GROUP_MAP[$source_pg]:-}"
 
+  # Step 2b: Migrate option group (dedup)
+  migrate_option_group_once "$id"
+  local source_og
+  source_og=$(aws rds describe-db-instances ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+    --db-instance-identifier "$id" \
+    --query 'DBInstances[0].OptionGroupMemberships[0].OptionGroupName' \
+    --output text 2>/dev/null || echo "")
+  local target_og=""
+  if [[ -n "$source_og" && "$source_og" != default:* && "$source_og" != "None" ]]; then
+    target_og="${OPTION_GROUP_MAP[$source_og]:-}"
+  fi
+
   set_status "$id" "IN_PROGRESS"
 
   # Step 3: Execute upgrade based on strategy
   if [[ "$strategy" == "blue_green" ]]; then
-    upgrade_blue_green "$id" "$target_pg"
+    upgrade_blue_green "$id" "$target_pg" "$target_og"
   elif [[ "$strategy" == "in_place" ]]; then
-    upgrade_in_place "$id" "$target_pg"
+    upgrade_in_place "$id" "$target_pg" "$target_og"
   else
     log_error "$id: Unknown strategy '$strategy'"
     set_status "$id" "FAILED" "Unknown strategy: $strategy"
@@ -260,7 +323,7 @@ upgrade_instance() {
 }
 
 upgrade_blue_green() {
-  local id="$1" target_pg="$2"
+  local id="$1" target_pg="$2" target_og="${3:-}"
 
   if [[ "$DRY_RUN" == "true" ]]; then
     log_warn "[DRY RUN] Would create Blue/Green for $id"
@@ -271,6 +334,7 @@ upgrade_blue_green() {
   log_step "Step 3: Creating Blue/Green deployment for $id"
   local bg_args=(--instance-id "$id" --target-version "$TARGET_VERSION")
   [[ -n "$target_pg" ]] && bg_args+=(--target-param-group "$target_pg")
+  [[ -n "$target_og" ]] && bg_args+=(--target-option-group "$target_og")
   [[ -n "$REGION" ]] && bg_args+=(--region "$REGION")
 
   BG_RESULT=$("$SCRIPT_DIR/upgrade/create_blue_green.sh" "${bg_args[@]}" 2>&1) || {
@@ -315,7 +379,7 @@ upgrade_blue_green() {
 }
 
 upgrade_in_place() {
-  local id="$1" target_pg="$2"
+  local id="$1" target_pg="$2" target_og="${3:-}"
 
   if [[ "$DRY_RUN" == "true" ]]; then
     log_warn "[DRY RUN] Would in-place upgrade $id"
@@ -326,6 +390,7 @@ upgrade_in_place() {
   log_step "Step 3: In-place upgrade for $id"
   local up_args=(--instance-id "$id" --target-version "$TARGET_VERSION" --apply-immediately)
   [[ -n "$target_pg" ]] && up_args+=(--target-param-group "$target_pg")
+  [[ -n "$target_og" ]] && up_args+=(--target-option-group "$target_og")
   [[ -n "$REGION" ]] && up_args+=(--region "$REGION")
 
   "$SCRIPT_DIR/upgrade/in_place_upgrade.sh" "${up_args[@]}" || {
