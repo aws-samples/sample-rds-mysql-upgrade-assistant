@@ -6,3 +6,7 @@
 
 # Audit logs
 /logs/
+
+# Security documents (internal only)
+docs/SECURITY_AUDIT.md
+docs/threat-model.tc.*
