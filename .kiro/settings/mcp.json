@@ -1,19 +1,15 @@
 {
   "mcpServers": {
-    "threat-modeling-mcp-server": {
-      "command": "uvx",
+    "rds-mysql-upgrade": {
+      "command": "uv",
       "args": [
-        "--from",
-        "git+ssh://git@ssh.gitlab.aws.dev/engsec-threatmodelingmcp/ThreatModelingMCPServer.git",
-        "threat-modeling-mcp-server"
+        "run", "python", "-m", "rds_upgrade_mcp.server"
       ],
       "env": {
-        "FASTMCP_LOG_LEVEL": "ERROR"
+        "AWS_DEFAULT_REGION": "us-west-2"
       },
       "disabled": false,
-      "autoApprove": [
-        "add_threat"
-      ]
+      "autoApprove": []
     }
   }
 }
