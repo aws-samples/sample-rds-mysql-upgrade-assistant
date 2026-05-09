@@ -49,6 +49,7 @@ RDS MySQL Upgrade Assistant 采用 shell 优先的方法：bash 脚本使用 AWS
 4. **创建 Blue/Green 部署** — 使用目标版本设置暂存环境
 5. **监控** — 轮询部署状态直到绿色环境就绪
 6. **Precheck 绿色环境** — 验证绿色环境通过所有兼容性检查
+6b. **Pre-switchover 就绪检查** — 执行 pre-switchover 就绪检查，验证部署状态、绿色/蓝色实例可用性、复制健康状态、无外部 binlog 复制，以及版本升级已确认
 7. **Switchover** — 执行 Blue/Green switchover 并监控护栏
 8. **验证** — 执行五项升级后健康检查
 9. **清理** — 移除旧的蓝色环境
