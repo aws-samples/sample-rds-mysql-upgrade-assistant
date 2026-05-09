@@ -49,6 +49,7 @@ For each instance, the tool follows a nine-step workflow:
 4. **Create Blue/Green deployment** — Set up a staging environment with the target version
 5. **Monitor** — Poll deployment status until the green environment is ready
 6. **Precheck green** — Verify the green environment passes all compatibility checks
+6b. **Pre-switchover check** — Run pre-switchover readiness checks to verify deployment status, green/blue instance availability, replication health, no external binlog replication, and version upgrade confirmed
 7. **Switchover** — Execute the Blue/Green switchover with guardrail monitoring
 8. **Validate** — Run five post-upgrade health checks
 9. **Cleanup** — Remove the old blue environment

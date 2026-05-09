@@ -57,6 +57,13 @@ bash scripts/upgrade/create_blue_green.sh \
 bash scripts/upgrade/monitor_blue_green.sh \
   --deployment-id <deployment_id> --poll-interval 60
 
+# Pre-switchover readiness check
+bash scripts/upgrade/pre_switchover_check.sh \
+  --deployment-id <deployment_id> --json
+```
+Only proceed with switchover if overall is PASS.
+
+```bash
 # Execute switchover
 bash scripts/upgrade/switchover_blue_green.sh \
   --deployment-id <deployment_id>

@@ -353,22 +353,45 @@ upgrade_blue_green() {
     return
   }
 
-  log_step "Step 5: Executing switchover"
+  log_step "Step 5: Pre-switchover readiness check"
+  PRE_SW_RESULT=$("$SCRIPT_DIR/upgrade/pre_switchover_check.sh" --deployment-id "$DEPLOYMENT_ID" ${REGION:+--region "$REGION"} --json 2>/dev/null) || true
+  PRE_SW_OVERALL=$(echo "$PRE_SW_RESULT" | jq -r '.overall // "UNKNOWN"' 2>/dev/null)
+
+  if [[ "$PRE_SW_OVERALL" != "PASS" ]]; then
+    PRE_SW_FAILURES=$(echo "$PRE_SW_RESULT" | jq -r '[.checks[] | select(.status == "FAIL")] | map("\(.name): \(.detail)") | join("; ")' 2>/dev/null)
+    log_error "$id: Pre-switchover check failed: $PRE_SW_FAILURES"
+    log_warn  "$id: Remediation hints:"
+    echo "$PRE_SW_RESULT" | jq -r '.checks[] | select(.status == "FAIL") | .name' 2>/dev/null | while read -r check_name; do
+      case "$check_name" in
+        deployment_status) log_warn "  - Wait for deployment to reach AVAILABLE status, or check for provisioning errors" ;;
+        green_instance_status) log_warn "  - Green instance not available. Check RDS events for errors during upgrade" ;;
+        blue_instance_status) log_warn "  - Blue instance not available. Check if maintenance or modification is in progress" ;;
+        replication_health) log_warn "  - Replication degraded. Check for DDL/DML conflicts or high write load on blue" ;;
+        external_replication) log_warn "  - Blue is an external replica. Stop external replication before switchover" ;;
+        *) log_warn "  - Check AWS docs: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments-switching.html" ;;
+      esac
+    done
+    set_status "$id" "FAILED" "Pre-switchover: $PRE_SW_FAILURES"
+    return
+  fi
+  log_info "$id: Pre-switchover check passed"
+
+  log_step "Step 6: Executing switchover"
   "$SCRIPT_DIR/upgrade/switchover_blue_green.sh" --deployment-id "$DEPLOYMENT_ID" ${REGION:+--region "$REGION"} || {
     log_error "$id: Switchover failed"
     set_status "$id" "FAILED" "Switchover failed"
     return
   }
 
-  # Step 6: Validate
-  log_step "Step 6: Post-upgrade validation"
+  # Step 7: Validate
+  log_step "Step 7: Post-upgrade validation"
   "$SCRIPT_DIR/validate/post_upgrade_validate.sh" --instance-id "$id" ${REGION:+--region "$REGION"} --expected-version "$TARGET_VERSION" || {
     log_warn "$id: Validation had issues"
   }
 
-  # Step 7: Cleanup
+  # Step 8: Cleanup
   if [[ "$CLEANUP_BLUE" == "true" ]]; then
-    log_step "Step 7: Cleaning up Blue/Green deployment"
+    log_step "Step 8: Cleaning up Blue/Green deployment"
     "$SCRIPT_DIR/upgrade/cleanup_blue_green.sh" --deployment-id "$DEPLOYMENT_ID" ${REGION:+--region "$REGION"} --delete-source || {
       log_warn "$id: Cleanup failed (non-critical)"
     }

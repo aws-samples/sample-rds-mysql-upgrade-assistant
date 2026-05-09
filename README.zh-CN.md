@@ -1,15 +1,15 @@
 # RDS MySQL Upgrade Assistant
 
-Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 → 8.4. Designed for AWS customers with 100+ RDS MySQL 8.0 instances approaching end-of-life.
+自动化 Amazon RDS MySQL 8.0 → 8.4 的批次 Blue/Green 部署升级。专为拥有 100 个以上即将到期的 RDS MySQL 8.0 实例的 AWS 客户设计。
 
-## Architecture
+## 架构
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     Database Administrator                    │
 │                                                              │
 │         Kiro IDE (Natural Language)    Shell (Direct)         │
-└──────────────┬──────────────────────────┬───────────────────┘
+└──────────────┬──────────────────────────────────────────────┘
                │                          │
                ▼                          │
 ┌──────────────────────────┐              │
@@ -60,7 +60,7 @@ Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 → 8.4.
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Upgrade Workflow (per instance)
+### 升级工作流程（每个实例）
 
 ```
   ┌─────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
@@ -81,14 +81,14 @@ Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 → 8.4.
                                                  └──────────┘
 ```
 
-## Prerequisites
+## 前提条件
 
-- **AWS CLI v2** — [Install guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
-- **jq** — JSON processor
-- **mysql client** — Standard MySQL command-line client
-- **Python 3.10+** with `uv` — For MCP server only
+- **AWS CLI v2** — [安装指南](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+- **jq** — JSON 处理器
+- **mysql client** — 标准 MySQL 命令行客户端
+- **Python 3.10+** 搭配 `uv` — 仅 MCP 服务器需要
 
-### Install mysql client
+### 安装 mysql client
 
 ```bash
 # macOS
@@ -108,7 +108,7 @@ sudo apt install mysql-client
 sudo yum install mysql
 ```
 
-### Install jq
+### 安装 jq
 
 ```bash
 # macOS
@@ -121,22 +121,22 @@ sudo yum install jq
 sudo apt install jq
 ```
 
-## Quick Start
+## 快速开始
 
-### 0. Clone the repository
+### 0. 克隆存储库
 
 ```bash
 git clone ssh://git.amazon.com/pkg/Rds-Mysql-Upgrade-Assistant
 cd Rds-Mysql-Upgrade-Assistant
 ```
 
-### 1. Discover MySQL 8.0 instances
+### 1. 探索 MySQL 8.0 实例
 
 ```bash
 ./scripts/inventory/discover_instances.sh --region us-east-1 --version-prefix 8.0 --json
 ```
 
-### 2. Run precheck on an instance
+### 2. 对实例执行 precheck
 
 ```bash
 # Interactive password prompt
@@ -154,7 +154,7 @@ cd Rds-Mysql-Upgrade-Assistant
 # Note: Avoid using MYSQL_PWD — it is deprecated in MySQL 8.0 and considered insecure.
 ```
 
-### 3. Migrate parameter group and option group
+### 3. 迁移参数组和选项组
 
 ```bash
 # Parameter group (only if custom)
@@ -165,16 +165,16 @@ cd Rds-Mysql-Upgrade-Assistant
 ./scripts/params/check_option_group.sh --instance-id my-db --dry-run --json
 ```
 
-### 4. Create Blue/Green deployment
+### 4. 创建 Blue/Green 部署
 
 ```bash
 ./scripts/upgrade/create_blue_green.sh \
   --instance-id my-db --target-version 8.4.0 --target-param-group my-mysql84-params
 ```
 
-### 5. Batch upgrade (100+ instances)
+### 5. 批次升级（100 个以上实例）
 
-Auto-generate a batch config from your current instances:
+从您当前的实例自动生成批次配置：
 
 ```bash
 # Generate config with auto-detected strategies
@@ -187,34 +187,35 @@ Auto-generate a batch config from your current instances:
   --output batch_config.yaml
 ```
 
-The generator automatically:
-- Detects Multi-AZ DB Clusters → assigns `in_place` (Blue/Green not supported)
-- Detects cross-region replicas → assigns `in_place`
-- Read replicas are not listed separately (included automatically in the primary's Blue/Green deployment)
-- Standard instances → assigns `blue_green`
+生成器自动：
+- 检测 Multi-AZ DB Clusters → 分配 `in_place`（不支持 Blue/Green）
+- 检测跨区域副本 → 分配 `in_place`
+- 只读副本不单独列出（自动包含在主要实例的 Blue/Green 部署中）
+- 标准实例 → 分配 `blue_green`
 
-Review and edit the generated config, then run:
+查看并编辑生成的配置，然后执行：
 
 ```bash
 ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --dry-run  # validate first
 ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --concurrency 3
 ```
 
-## Using with Kiro
 
-### Install Kiro IDE
+## 使用 Kiro
 
-Download from [kiro.dev/downloads](https://kiro.dev/downloads/):
+### 安装 Kiro IDE
+
+从 [kiro.dev/downloads](https://kiro.dev/downloads/) 下载：
 
 - **macOS** — Apple Silicon / Intel `.dmg`
-- **Windows** — x64 installer
-- **Linux** — `.deb` (Ubuntu 24+) or Universal AppImage
+- **Windows** — x64 安装程序
+- **Linux** — `.deb`（Ubuntu 24+）或通用 AppImage
 
-Launch Kiro and sign in with your AWS Builder ID or IAM Identity Center.
+启动 Kiro 并使用您的 AWS Builder ID 或 IAM Identity Center 登录。
 
-### Install Kiro CLI (Optional)
+### 安装 Kiro CLI（可选）
 
-Kiro CLI brings the same AI-assisted workflow to your terminal — useful for headless environments, SSH sessions, or CI pipelines.
+Kiro CLI 将相同的 AI 辅助工作流程带到您的终端——适用于无头环境、SSH 会话或 CI 管道。
 
 ```bash
 # macOS / Linux
@@ -224,23 +225,23 @@ curl -fsSL https://cli.kiro.dev/install | bash
 irm 'https://cli.kiro.dev/install.ps1' | iex
 ```
 
-After install, authenticate:
+安装后，进行验证：
 
 ```bash
 kiro-cli login
 ```
 
-Verify installation:
+验证安装：
 
 ```bash
 kiro-cli doctor
 ```
 
-For full details see [Kiro CLI Installation](https://kiro.dev/docs/cli/installation/).
+完整详情请参阅 [Kiro CLI Installation](https://kiro.dev/docs/cli/installation/)。
 
-### Install uv (Python package manager)
+### 安装 uv（Python 包管理器）
 
-The MCP server runs via `uv`. Install it if you don't have it:
+MCP 服务器通过 `uv` 执行。如果您尚未安装，请安装：
 
 ```bash
 # macOS / Linux
@@ -250,13 +251,13 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 brew install uv
 ```
 
-Verify: `uv --version`
+验证：`uv --version`
 
-### Configure MCP Server
+### 配置 MCP Server
 
-#### For Kiro IDE
+#### 用于 Kiro IDE
 
-Create or edit `.kiro/settings/mcp.json` in the workspace root:
+在工作区根目录创建或编辑 `.kiro/settings/mcp.json`：
 
 ```json
 {
@@ -278,16 +279,16 @@ Create or edit `.kiro/settings/mcp.json` in the workspace root:
 }
 ```
 
-> Replace `/absolute/path/to/rds-mysql-upgrade-assistant` with the actual path to this repo.
-> Set `AWS_DEFAULT_REGION` to your target region.
+> 将 `/absolute/path/to/rds-mysql-upgrade-assistant` 替换为此存储库的实际路径。
+> 将 `AWS_DEFAULT_REGION` 设置为您的目标区域。
 
-A ready-to-edit example is available at [`examples/mcp.json`](examples/mcp.json).
+可直接编辑的示例位于 [`examples/mcp.json`](examples/mcp.json)。
 
-Kiro auto-detects config changes and starts the MCP server. You can also reconnect via Command Palette → "MCP: Reconnect Server".
+Kiro 自动检测配置变更并启动 MCP 服务器。您也可以通过命令面板 → "MCP: Reconnect Server" 重新连接。
 
-#### For Kiro CLI
+#### 用于 Kiro CLI
 
-Kiro CLI uses the same `mcp.json` format. Place it at `~/.kiro/settings/mcp.json` for global access, or in the workspace `.kiro/settings/mcp.json`.
+Kiro CLI 使用相同的 `mcp.json` 格式。将其放置在 `~/.kiro/settings/mcp.json` 以进行全局访问，或放在工作区的 `.kiro/settings/mcp.json`。
 
 ```bash
 # Start a chat session with MCP tools available
@@ -297,19 +298,19 @@ kiro-cli chat
 kiro-cli chat --headless "Discover all MySQL 8.0 instances in us-west-2"
 ```
 
-### Verify MCP Connection
+### 验证 MCP 连接
 
-In Kiro (IDE or CLI), try:
+在 Kiro（IDE 或 CLI）中，尝试：
 
 ```
 Discover all MySQL 8.0 instances
 ```
 
-If the MCP server is connected, Kiro will call the `discover_instances` tool and return results.
+如果 MCP 服务器已连接，Kiro 将调用 `discover_instances` 工具并返回结果。
 
-### Example Kiro Commands
+### Kiro 命令示例
 
-Once connected, use natural language:
+连接后，使用自然语言：
 
 - "Discover all MySQL 8.0 instances in us-west-2"
 - "Run precheck on prod-db-01 using secret prod/db01/creds"
@@ -317,68 +318,68 @@ Once connected, use natural language:
 - "Check the status of Blue/Green deployment bgd-xxx"
 - "Run batch upgrade with config examples/batch_config.yaml in dry-run mode"
 
-### Kiro Skills (Reusable Workflows)
+### Kiro Skills（可重复使用的工作流程）
 
-This project includes pre-built Kiro skills in `.kiro/skills/` that automate multi-step workflows. Use them by typing `#` in Kiro chat and selecting the skill:
+此项目在 `.kiro/skills/` 中包含预建的 Kiro skills，可自动化多步骤工作流程。在 Kiro 聊天中输入 `#` 并选择 skill 来使用：
 
-| Skill | Description |
+| Skill | 说明 |
 |-------|-------------|
-| **Upgrade Single Instance** | End-to-end upgrade: precheck → param migration → Blue/Green or in-place → validate |
-| **Batch Upgrade** | Discover → generate config → dry-run → batch upgrade → verify all upgraded |
-| **Precheck Report** | Run prechecks on all instances and generate a fleet-wide readiness report |
-| **Cleanup Deployments** | Find completed Blue/Green deployments, validate, and clean up old environments |
-| **Application Validation** | Run custom app-level SQL checks against instances after upgrade |
+| **Upgrade Single Instance** | 端到端升级：precheck → 参数迁移 → Blue/Green 或就地升级 → 验证 |
+| **Batch Upgrade** | 探索 → 生成配置 → 试运行 → 批次升级 → 验证全部已升级 |
+| **Precheck Report** | 对所有实例执行 precheck 并生成集群就绪报告 |
+| **Cleanup Deployments** | 查找已完成的 Blue/Green 部署、验证并清理旧环境 |
+| **Application Validation** | 升级后对实例执行自定义应用程序级别 SQL 检查 |
 
-## Upgrade Workflow
+## 升级工作流程
 
-For each instance, the tool follows 9 steps:
+对于每个实例，工具遵循 9 个步骤：
 
-1. **Discover** — Find MySQL 8.0 instances (`discover_instances.sh`)
-2. **Precheck** — Run 19-check compatibility analysis (`mysql_precheck_run.sh`)
-3. **Migrate params & options** — Create 8.4 parameter group from 8.0 (`migrate_param_group.sh`), migrate custom option groups (`check_option_group.sh`)
-4. **Create B/G** — Create Blue/Green deployment (`create_blue_green.sh`)
-   - **Note:** Blue/Green is not supported for instances with cross-Region read replicas. Use in-place upgrade for those instances.
-5. **Monitor** — Wait for green environment ready (`monitor_blue_green.sh`)
-6. **Precheck green** — Verify green environment passes precheck
-7. **Switchover** — Run pre-switchover readiness check (`pre_switchover_check.sh`), then execute Blue/Green switchover (`switchover_blue_green.sh`)
-8. **Validate** — Post-upgrade health checks (`post_upgrade_validate.sh`)
-9. **Cleanup** — Remove old blue environment (`cleanup_blue_green.sh`)
+1. **探索** — 查找 MySQL 8.0 实例（`discover_instances.sh`）
+2. **Precheck** — 执行 19 项兼容性分析检查（`mysql_precheck_run.sh`）
+3. **迁移参数和选项** — 从 8.0 创建 8.4 参数组（`migrate_param_group.sh`），迁移自定义选项组（`check_option_group.sh`）
+4. **创建 B/G** — 创建 Blue/Green 部署（`create_blue_green.sh`）
+   - **注意：** 具有跨区域只读副本的实例不支持 Blue/Green。请对这些实例使用就地升级。
+5. **监控** — 等待绿色环境就绪（`monitor_blue_green.sh`）
+6. **Precheck 绿色环境** — 验证绿色环境通过 precheck
+7. **Switchover** — 执行 Blue/Green switchover（`switchover_blue_green.sh`）
+8. **验证** — 升级后健康检查（`post_upgrade_validate.sh`）
+9. **清理** — 移除旧的蓝色环境（`cleanup_blue_green.sh`）
 
-## Precheck Reference
+## Precheck 参考
 
-19 checks covering MySQL Shell + RDS PrePatchCompatibility:
+19 项检查涵盖 MySQL Shell + RDS PrePatchCompatibility：
 
-| # | Check | Severity | Description |
+| # | 检查 | 严重性 | 说明 |
 |---|---|---|---|
-| 1 | removedSysVars | SKIP | RDS handles parameter cleanup |
-| 2 | sysVarsNewDefaults | Warning | Changed defaults in 8.4 |
-| 3 | checkTableForUpgrade | Error | Corrupt views, incompatible types (Phase 2) |
-| 4 | foreignKeyReferences | Warning | FK referencing non-unique/partial indexes |
-| 5 | authMethodUsage | Error/Warning | Deprecated auth plugins |
-| 6 | pluginUsage | Error/Warning | Removed/deprecated plugins |
-| 7 | deprecatedDefaultAuth | SKIP | RDS manages default auth |
-| 8 | deprecatedRouterAuthMethod | SKIP | RDS doesn't use Router |
-| 9 | columnDefinition | Error | FLOAT/DOUBLE with AUTO_INCREMENT |
-| 10 | sysVarsAllowedValues | Warning | Restricted values in 8.4 |
-| 11 | invalidPrivileges | Notice | Removed privileges |
-| 12 | partitionsWithPrefixKeys | Error | Prefix key partitions |
-| 13 | nonInclusiveLanguage | Warning | Non-inclusive terms |
-| 14 | memcachedPlugin | Error | daemon_memcached installed |
-| 15 | sysSchemaObjects | Error | User tables in sys schema |
-| 16 | dollarSignName | Warning | Names starting with $ |
-| 17 | reservedKeywords | Warning | FULL, INTERSECT conflicts |
-| 18 | deprecatedTemporalDelimiter | Error | Deprecated temporal delimiters |
-| 19 | spatialIndex | Warning | InnoDB spatial index bug range |
+| 1 | removedSysVars | SKIP | RDS 处理参数清理 |
+| 2 | sysVarsNewDefaults | Warning | 8.4 中已变更的默认值 |
+| 3 | checkTableForUpgrade | Error | 损坏的视图、不兼容的类型（第二阶段） |
+| 4 | foreignKeyReferences | Warning | 外键引用非唯一/部分索引 |
+| 5 | authMethodUsage | Error/Warning | 已弃用的验证插件 |
+| 6 | pluginUsage | Error/Warning | 已移除/已弃用的插件 |
+| 7 | deprecatedDefaultAuth | SKIP | RDS 管理默认验证 |
+| 8 | deprecatedRouterAuthMethod | SKIP | RDS 不使用 Router |
+| 9 | columnDefinition | Error | FLOAT/DOUBLE 搭配 AUTO_INCREMENT |
+| 10 | sysVarsAllowedValues | Warning | 8.4 中受限的值 |
+| 11 | invalidPrivileges | Notice | 已移除的权限 |
+| 12 | partitionsWithPrefixKeys | Error | 前缀键分区 |
+| 13 | nonInclusiveLanguage | Warning | 非包容性用语 |
+| 14 | memcachedPlugin | Error | 已安装 daemon_memcached |
+| 15 | sysSchemaObjects | Error | sys 架构中的用户表 |
+| 16 | dollarSignName | Warning | 以 $ 开头的名称 |
+| 17 | reservedKeywords | Warning | FULL、INTERSECT 冲突 |
+| 18 | deprecatedTemporalDelimiter | Error | 已弃用的时间分隔符 |
+| 19 | spatialIndex | Warning | InnoDB 空间索引错误范围 |
 
-## References
+## 参考资料
 
 - [MySQL 8.4 Upgrade Prerequisites](https://dev.mysql.com/doc/refman/8.4/en/upgrade-prerequisites.html)
 - [Amazon RDS MySQL 8.0 to 8.4 Prechecks](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.MySQL.Major.html)
 - [RDS Blue/Green Deployments](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments.html)
 - [Parameter Group Migration Tool](https://github.com/awslabs/rds-support-tools/blob/main/rds-general/shell/migrate_param_group.sh)
-- [Remediation Playbook](docs/remediation-playbook.md) — Fix steps for each precheck finding
-- [Application Validation Template](scripts/validate/app_validate_template.sql) — Customize with your critical queries
+- [修复手册](docs/remediation-playbook.md) — 每项 precheck 发现的修复步骤
+- [应用程序验证模板](scripts/validate/app_validate_template.sql) — 使用您的关键查询进行自定义
 
-## License
+## 许可证
 
-Apache 2.0 — See [LICENSE](LICENSE)
+Apache 2.0 — 请参阅 [LICENSE](LICENSE)

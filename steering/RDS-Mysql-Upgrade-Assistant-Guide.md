@@ -153,6 +153,27 @@ bash scripts/validate/app_validate_run.sh \
 ```
 Automatically executes all `app_validate*.sql` files and reports PASS/FAIL/WARNING per check.
 
+## Pre-Switchover Readiness Check
+
+Run `pre_switchover_check.sh` before executing switchover to verify guardrails:
+
+```bash
+bash scripts/upgrade/pre_switchover_check.sh --deployment-id <id> --json
+```
+
+| # | Check | What it verifies | If FAIL |
+|---|-------|-----------------|---------|
+| 1 | `deployment_status` | Deployment is AVAILABLE | Wait for provisioning to complete or check for errors |
+| 2 | `green_instance_status` | Green instance is available | Check RDS events for upgrade errors |
+| 3 | `blue_instance_status` | Blue instance is available | Check if maintenance or modification is in progress |
+| 4 | `replication_health` | No replication degradation | Reduce write load on blue, check for long-running DDL |
+| 5 | `external_replication` | Blue is not an external binlog replica | Stop external replication before switchover |
+| 6 | `version_upgrade` | Green version > Blue version | Verify upgrade was applied to green environment |
+
+Only proceed with switchover if overall result is PASS.
+
+Ref: [Blue/Green Switchover Guardrails](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments-switching.html)
+
 ## Rollback
 
 ### Blue/Green
@@ -184,3 +205,4 @@ Automatically executes all `app_validate*.sql` files and reports PASS/FAIL/WARNI
 4. Use concurrency carefully (3-5 for B/G, 1 for in-place)
 5. Monitor CloudWatch during upgrades
 6. Keep blue environments for 24-48 hours after switchover
+7. Run pre-switchover readiness check before switchover (`pre_switchover_check.sh`) to verify deployment status, replication health, and instance availability
