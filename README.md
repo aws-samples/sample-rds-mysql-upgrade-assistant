@@ -22,31 +22,39 @@ Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 → 8.4.
 ┌─────────────────────────────────────────────────────────────┐
 │                      Shell Scripts                            │
 │                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
-│  │  discover_    │  │  precheck_   │  │  migrate_param_   │  │
-│  │  instances.sh │  │  run.sh      │  │  group.sh         │  │
-│  │  (AWS CLI)    │  │  + phase1.sql│  │  (rds-support-    │  │
-│  │              │  │  (mysql cli) │  │   tools)          │  │
-│  └──────┬───────┘  └──────┬───────┘  └────────┬──────────┘  │
-│         │                 │                    │             │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
-│  │  create_     │  │  monitor_    │  │  switchover_      │  │
-│  │  blue_green  │  │  blue_green  │  │  blue_green.sh    │  │
-│  │  .sh         │  │  .sh         │  │                   │  │
-│  └──────┬───────┘  └──────┬───────┘  └────────┬──────────┘  │
-│         │                 │                    │             │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
-│  │  in_place_   │  │  post_upgrade│  │  cleanup_         │  │
-│  │  upgrade.sh  │  │  _validate.sh│  │  blue_green.sh    │  │
-│  └──────┬───────┘  └──────┬───────┘  └────────┬──────────┘  │
-│         │                 │                    │             │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │              batch_upgrade.sh                        │    │
-│  │   Orchestrates all scripts with concurrency control  │    │
-│  │   Supports: blue_green | in_place strategies         │    │
-│  │   Parameter group dedup for shared groups            │    │
-│  └──────────────────────┬──────────────────────────────┘    │
-└─────────────────────────┼───────────────────────────────────┘
+│  ┌───────────────┐  ┌───────────────┐  ┌────────────────┐   │
+│  │ discover_     │  │ precheck_     │  │ generate_      │   │
+│  │ instances.sh  │  │ run.sh        │  │ config.sh      │   │
+│  │ (inventory)   │  │ + phase1.sql  │  │ (batch config) │   │
+│  └───────┬───────┘  └───────┬───────┘  └───────┬────────┘   │
+│          │                  │                   │            │
+│  ┌───────────────┐  ┌───────────────┐  ┌────────────────┐   │
+│  │ prepare_      │  │ check_option_ │  │ migrate_param_ │   │
+│  │ param_group.sh│  │ group.sh      │  │ group.sh       │   │
+│  │ (auto-detect) │  │ (option grp)  │  │ (rds-support)  │   │
+│  └───────┬───────┘  └───────┬───────┘  └───────┬────────┘   │
+│          │                  │                   │            │
+│  ┌───────────────┐  ┌───────────────┐  ┌────────────────┐   │
+│  │ create_       │  │ monitor_      │  │ pre_switchover_│   │
+│  │ blue_green.sh │  │ blue_green.sh │  │ check.sh       │   │
+│  └───────┬───────┘  └───────┬───────┘  └───────┬────────┘   │
+│          │                  │                   │            │
+│  ┌───────────────┐  ┌───────────────┐  ┌────────────────┐   │
+│  │ switchover_   │  │ in_place_     │  │ cleanup_       │   │
+│  │ blue_green.sh │  │ upgrade.sh    │  │ blue_green.sh  │   │
+│  └───────┬───────┘  └───────┬───────┘  └───────┬────────┘   │
+│          │                  │                   │            │
+│  ┌───────────────┐  ┌───────────────┐  ┌────────────────┐   │
+│  │ post_upgrade_ │  │ app_validate_ │  │ batch_         │   │
+│  │ validate.sh   │  │ run.sh        │  │ upgrade.sh     │   │
+│  │ (infra check) │  │ (app check)   │  │ (orchestrator) │   │
+│  └───────────────┘  └───────────────┘  └────────────────┘   │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────┐     │
+│  │  lib/audit_log.sh    lib/integrity_check.sh         │     │
+│  │  (security: logging, checksums, dependency verify)  │     │
+│  └─────────────────────────────────────────────────────┘     │
+└─────────────────────────────────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
@@ -63,22 +71,23 @@ Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 → 8.4.
 ### Upgrade Workflow (per instance)
 
 ```
-  ┌─────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-  │ 1.Disco-│───▶│2.Precheck│───▶│3.Migrate │───▶│4.Create  │
-  │  ver    │    │ (19 SQL  │    │  Params  │    │  B/G or  │
-  │         │    │  checks) │    │  (dedup) │    │  In-place│
-  └─────────┘    └──────────┘    └──────────┘    └────┬─────┘
-                                                      │
-  ┌─────────┐    ┌──────────┐    ┌──────────┐    ┌────▼─────┐
-  │9.Cleanup│◀───│8.Validate│◀───│7.Switch- │◀───│5.Monitor │
-  │  (B/G)  │    │ (5 checks│    │  over    │    │  Status  │
-  │         │    │  + MySQL) │    │          │    │          │
-  └─────────┘    └──────────┘    └──────────┘    └──────────┘
-                                                      │
-                                                 ┌────▼─────┐
-                                                 │6.Precheck│
-                                                 │  Green   │
-                                                 └──────────┘
+  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+  │ 1.Disco- │───▶│2.Precheck│───▶│3.Migrate │───▶│4.Create  │
+  │  ver     │    │ (19 SQL  │    │ Params & │    │  B/G or  │
+  │          │    │  checks) │    │ Options  │    │  In-place│
+  └──────────┘    └──────────┘    └──────────┘    └────┬─────┘
+                                                       │
+  ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌────▼─────┐
+  │10.Cleanup│◀───│9.App     │◀───│8.Infra   │◀───│5.Monitor │
+  │  (B/G)   │    │ Validate │    │ Validate │    │  Status  │
+  │          │    │          │    │          │    │          │
+  └──────────┘    └──────────┘    └──────────┘    └────┬─────┘
+                                                       │
+                  ┌──────────┐    ┌──────────┐    ┌────▼─────┐
+                  │          │    │7.Switch- │◀───│6.Pre-SW  │
+                  │          │    │  over    │    │  Check   │
+                  │          │    │          │    │          │
+                  └──────────┘    └──────────┘    └──────────┘
 ```
 
 ## Prerequisites
@@ -331,18 +340,19 @@ This project includes pre-built Kiro skills in `.kiro/skills/` that automate mul
 
 ## Upgrade Workflow
 
-For each instance, the tool follows 9 steps:
+For each instance, the tool follows 10 steps:
 
 1. **Discover** — Find MySQL 8.0 instances (`discover_instances.sh`)
 2. **Precheck** — Run 19-check compatibility analysis (`mysql_precheck_run.sh`)
 3. **Migrate params & options** — Create 8.4 parameter group from 8.0 (`migrate_param_group.sh`), migrate custom option groups (`check_option_group.sh`)
 4. **Create B/G** — Create Blue/Green deployment (`create_blue_green.sh`)
-   - **Note:** Blue/Green is not supported for instances with cross-Region read replicas. Use in-place upgrade for those instances.
+   - **Note:** Blue/Green is not supported for instances with cross-Region read replicas or Multi-AZ DB Clusters. Use in-place upgrade for those.
 5. **Monitor** — Wait for green environment ready (`monitor_blue_green.sh`)
-6. **Precheck green** — Verify green environment passes precheck
-7. **Switchover** — Run pre-switchover readiness check (`pre_switchover_check.sh`), then execute Blue/Green switchover (`switchover_blue_green.sh`)
-8. **Validate** — Post-upgrade health checks (`post_upgrade_validate.sh`)
-9. **Cleanup** — Remove old blue environment (`cleanup_blue_green.sh`)
+6. **Pre-switchover check** — Verify guardrails: deployment status, replication health, instance availability (`pre_switchover_check.sh`)
+7. **Switchover** — Execute Blue/Green switchover (`switchover_blue_green.sh`)
+8. **Infra validate** — Post-upgrade infrastructure health checks (`post_upgrade_validate.sh`)
+9. **App validate** — Application-level validation with custom SQL (`app_validate_run.sh`)
+10. **Cleanup** — Remove old blue environment (`cleanup_blue_green.sh`)
 
 ## Precheck Reference
 
