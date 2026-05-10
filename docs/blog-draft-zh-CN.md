@@ -33,7 +33,7 @@ RDS MySQL Upgrade Assistant 采用 shell 优先的方法：bash 脚本使用 AWS
 
 以下图表说明解决方案架构。
 
-*[架构图预留位置 — 使用 AWS Architecture Icons 创建，显示：DBA → Kiro IDE → MCP Server → Shell Scripts → AWS Cloud (RDS, Blue/Green Deployments, Secrets Manager)]*
+![RDS MySQL Upgrade Assistant Architecture](docs/rds_mysql_upgrade_architecture.png)
 
 ## 运作方式
 
@@ -399,6 +399,11 @@ cp scripts/validate/app_validate_template.sql scripts/validate/app_validate.sql
 
 3. **对任何实例自动执行：**
 ```bash
+# 使用交互式密码提示
+bash scripts/validate/app_validate_run.sh \
+  -h <endpoint> -u <user> --json
+
+# 或使用 Secrets Manager
 bash scripts/validate/app_validate_run.sh \
   -h <endpoint> -u <user> --secret-id <secret_id> --json
 ```
