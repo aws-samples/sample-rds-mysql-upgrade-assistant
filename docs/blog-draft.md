@@ -33,7 +33,7 @@ The solution consists of four components:
 
 The following diagram illustrates the solution architecture.
 
-*[Architecture diagram placeholder — create using AWS Architecture Icons showing: DBA → Kiro IDE → MCP Server → Shell Scripts → AWS Cloud (RDS, Blue/Green Deployments, Secrets Manager)]*
+![RDS MySQL Upgrade Assistant Architecture](docs/rds_mysql_upgrade_architecture.png)
 
 ## How it works
 
