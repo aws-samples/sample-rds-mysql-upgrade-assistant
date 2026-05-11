@@ -1,5 +1,7 @@
 # 使用 Kiro 和 MCP 自动化大规模 RDS MySQL 8.0 至 8.4 升级
 
+> **摘要：** 本文介绍 RDS MySQL Upgrade Assistant，一个自动化 Amazon RDS 上 MySQL 8.0 至 8.4 批量升级的开源工具。它解决了大规模主要版本升级中最困难的两个问题：系统性地修复数百个实例的 precheck 发现，以及升级后验证应用程序行为。工具提供 19 项 SQL precheck 引擎搭配修复手册、自动化参数和选项组迁移、Blue/Green 和就地升级编排（含 pre-switchover 护栏检查），以及应用程序验证框架——全部可通过 shell 脚本或 Kiro IDE/CLI 的自然语言访问。
+
 MySQL 8.0 即将结束标准支持。对于运行数百个 Amazon RDS for MySQL 8.0 实例的 AWS 客户而言，升级至 MySQL 8.4 是一项关键但耗时的任务。每个实例都需要兼容性评估、参数组迁移、Blue/Green 部署创建、switchover 执行以及升级后验证——手动操作时，每个实例可能需要数小时。
 
 在本文中，我们介绍 RDS MySQL Upgrade Assistant，这是一个开源工具，使用 Kiro 和 Model Context Protocol (MCP) 服务器自动化完整的升级生命周期。该工具结合了纯 SQL precheck 引擎、基于 shell 的自动化脚本，以及通过 Kiro 提供的自然语言接口，将原本需要多天的手动工作转变为精简、可重复的工作流程。

@@ -1,5 +1,7 @@
 # Automate large-scale RDS MySQL 8.0 to 8.4 upgrades with Kiro and MCP
 
+> **Abstract:** This post presents the RDS MySQL Upgrade Assistant, an open-source tool that automates batch MySQL 8.0 to 8.4 upgrades on Amazon RDS. It addresses the two hardest parts of major version upgrades at scale: systematically remediating precheck findings across hundreds of instances, and validating application behavior post-upgrade. The tool provides a 19-check SQL precheck engine with a remediation playbook, automated parameter and option group migration, Blue/Green and in-place upgrade orchestration with pre-switchover guardrail checks, and an application validation framework — all accessible via shell scripts or natural language through Kiro IDE/CLI.
+
 MySQL 8.0 is approaching end of standard support. For AWS customers running hundreds of Amazon RDS for MySQL 8.0 instances, upgrading to MySQL 8.4 is a critical but time-consuming task. Each instance requires compatibility assessment, parameter group migration, Blue/Green deployment creation, switchover execution, and post-upgrade validation — a process that can take hours per instance when done manually.
 
 In this post, we introduce the RDS MySQL Upgrade Assistant, an open-source tool that automates the full upgrade lifecycle using Kiro and Model Context Protocol (MCP) servers. The tool combines a pure SQL precheck engine, shell-based automation scripts, and a natural language interface through Kiro to transform what was previously a multi-day manual effort into a streamlined, repeatable workflow.
@@ -397,8 +399,13 @@ cp scripts/validate/app_validate_template.sql scripts/validate/app_validate.sql
 
 3. **Run automatically against any instance:**
 ```bash
+# Using Secrets Manager (recommended)
 bash scripts/validate/app_validate_run.sh \
   -h <endpoint> -u <user> --secret-id <secret_id> --json
+
+# Using interactive password prompt
+bash scripts/validate/app_validate_run.sh \
+  -h <endpoint> -u <user> --json
 ```
 The runner automatically executes all `app_validate*.sql` files and reports structured PASS/FAIL/WARNING results. You can create multiple files (e.g., `app_validate_orders.sql`, `app_validate_auth.sql`) for different validation domains.
 
