@@ -121,7 +121,7 @@ else
     if [[ -n "$PASSWORD" && -n "$USER" ]]; then
       DEFAULTS_FILE=$(mktemp /tmp/validate_cnf_XXXXXX)
       echo -e "[client]\npassword=$PASSWORD" > "$DEFAULTS_FILE"
-      trap "rm -f $DEFAULTS_FILE" EXIT
+      trap 'rm -f '"$DEFAULTS_FILE"'' EXIT
 
       MYSQL_VER=$(mysql --defaults-extra-file="$DEFAULTS_FILE" --connect-timeout=10 \
         --ssl-mode=REQUIRED -h "$HOST" -u "$USER" -N -e "SELECT VERSION();" 2>/dev/null || echo "")

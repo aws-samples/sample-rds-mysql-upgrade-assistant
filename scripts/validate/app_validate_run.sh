@@ -85,7 +85,7 @@ cat > "$DEFAULTS_FILE" <<EOF
 password=$PASSWORD
 EOF
 unset PASSWORD
-trap "rm -f '$DEFAULTS_FILE'" EXIT
+trap 'rm -f '"$DEFAULTS_FILE"'' EXIT
 
 CONN_ARGS=(--defaults-extra-file="$DEFAULTS_FILE" --connect-timeout=10 --ssl-mode=REQUIRED --host="$HOST" --port="$PORT" --user="$USER")
 
