@@ -126,7 +126,7 @@ precheck 引擎帮助在承诺升级*之前*识别兼容性问题。它以纯 SQ
 克隆项目存储库：
 
 ```bash
-git clone ssh://git.amazon.com/pkg/Rds-Mysql-Upgrade-Assistant
+git clone https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant.git
 cd Rds-Mysql-Upgrade-Assistant
 ```
 
@@ -334,7 +334,7 @@ Failed instances:
 
 ### 大规模处理 precheck 发现
 
-在整个集群执行 precheck 后，您可能会看到常见模式。随附的[修复手册](https://code.amazon.com/packages/Rds-Mysql-Upgrade-Assistant/blobs/main/--/docs/remediation-playbook.md)为每种发现类型提供具体的修复步骤。以下是建议的方法：
+在整个集群执行 precheck 后，您可能会看到常见模式。随附的[修复手册](https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant/blob/main/docs/remediation-playbook.md)为每种发现类型提供具体的修复步骤。以下是建议的方法：
 
 1. **跨集群分类发现。** 大多数实例共享相同的发现（例如 `sysVarsNewDefaults` 警告几乎出现在每个实例上）。按发现类型而非按实例分组。
 
@@ -370,7 +370,7 @@ Failed instances:
 
    | 发现 | 是否需要行动？ | 建议 |
    |---------|-----------------|----------------|
-   | `sysVarsNewDefaults` | 通常不需要 | 查看[默认值变更表](https://code.amazon.com/packages/Rds-Mysql-Upgrade-Assistant/blobs/main/--/docs/remediation-playbook.md)。大多数新默认值是改进。 |
+   | `sysVarsNewDefaults` | 通常不需要 | 查看[默认值变更表](https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant/blob/main/docs/remediation-playbook.md)。大多数新默认值是改进。 |
    | `mysql_native_password` | 否（在 RDS 上） | 在 RDS MySQL 8.4 中仍然启用。计划长期迁移至 `caching_sha2_password`。 |
    | `binlog_format` STATEMENT/MIXED | 是 | 必须变更为 ROW。在参数组中配置。 |
    | `foreignKeyReferences` | 查看 | 如需要，在引用列上添加唯一索引。 |
@@ -378,7 +378,7 @@ Failed instances:
 
 4. **批量应用修复。** 对于影响多个共享相同架构的实例的架构变更，修复一次并在测试实例上验证后再推广。
 
-有关所有 19 项检查的完整修复步骤，请参阅[完整修复手册](https://code.amazon.com/packages/Rds-Mysql-Upgrade-Assistant/blobs/main/--/docs/remediation-playbook.md)。
+有关所有 19 项检查的完整修复步骤，请参阅[完整修复手册](https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant/blob/main/docs/remediation-playbook.md)。
 
 ### 升级后的应用程序验证
 

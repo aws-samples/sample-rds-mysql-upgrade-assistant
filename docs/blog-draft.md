@@ -125,7 +125,7 @@ To use this solution, you need:
 Clone the project repository:
 
 ```bash
-git clone ssh://git.amazon.com/pkg/Rds-Mysql-Upgrade-Assistant
+git clone https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant.git
 cd Rds-Mysql-Upgrade-Assistant
 ```
 
@@ -332,7 +332,7 @@ The automation above handles the operational workflow, but the genuinely hard pa
 
 ### Working through precheck findings at scale
 
-After running prechecks across your fleet, you'll likely see common patterns. The included [remediation playbook](https://code.amazon.com/packages/Rds-Mysql-Upgrade-Assistant/blobs/main/--/docs/remediation-playbook.md) provides specific fix steps for every finding type. Here's the recommended approach:
+After running prechecks across your fleet, you'll likely see common patterns. The included [remediation playbook](https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant/blob/main/docs/remediation-playbook.md) provides specific fix steps for every finding type. Here's the recommended approach:
 
 1. **Categorize findings across the fleet.** Most instances share the same findings (e.g., `sysVarsNewDefaults` warnings appear on nearly every instance). Group by finding type rather than by instance.
 
@@ -368,7 +368,7 @@ After running prechecks across your fleet, you'll likely see common patterns. Th
 
    | Finding | Action Required? | Recommendation |
    |---------|-----------------|----------------|
-   | `sysVarsNewDefaults` | Usually no | Review [default changes table](https://code.amazon.com/packages/Rds-Mysql-Upgrade-Assistant/blobs/main/--/docs/remediation-playbook.md). Most new defaults are improvements. |
+   | `sysVarsNewDefaults` | Usually no | Review [default changes table](https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant/blob/main/docs/remediation-playbook.md). Most new defaults are improvements. |
    | `mysql_native_password` | No (on RDS) | Still enabled in RDS MySQL 8.4. Plan long-term migration to `caching_sha2_password`. |
    | `binlog_format` STATEMENT/MIXED | Yes | Must change to ROW. Set in parameter group. |
    | `foreignKeyReferences` | Review | Add unique index on referenced columns if needed. |
@@ -376,7 +376,7 @@ After running prechecks across your fleet, you'll likely see common patterns. Th
 
 4. **Apply fixes in bulk.** For schema changes that affect multiple instances sharing the same schema, fix once and verify on a test instance before rolling out.
 
-For the complete list of remediation steps for all 19 checks, see the [full remediation playbook](https://code.amazon.com/packages/Rds-Mysql-Upgrade-Assistant/blobs/main/--/docs/remediation-playbook.md).
+For the complete list of remediation steps for all 19 checks, see the [full remediation playbook](https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant/blob/main/docs/remediation-playbook.md).
 
 ### Application validation after upgrade
 

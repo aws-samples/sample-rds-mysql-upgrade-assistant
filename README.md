@@ -135,7 +135,7 @@ sudo apt install jq
 ### 0. Clone the repository
 
 ```bash
-git clone ssh://git.amazon.com/pkg/Rds-Mysql-Upgrade-Assistant
+git clone https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant.git
 cd Rds-Mysql-Upgrade-Assistant
 ```
 
