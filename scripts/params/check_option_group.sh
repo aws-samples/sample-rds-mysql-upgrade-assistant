@@ -156,19 +156,23 @@ fi
 
 # --- Add options to target group (if any) ---
 if [[ "$MIGRATE_COUNT" -gt 0 ]]; then
-  for opt_name in $(echo "$MIGRATE_OPTIONS" | jq -r '.[].OptionName'); do
-    ADD_ARGS=(
-      ${REGION_ARGS[@]+"${REGION_ARGS[@]}"}
-      --option-group-name "$TARGET_OG"
-      --options-to-include "OptionName=$opt_name"
-      --apply-immediately
-    )
+  for opt_json in $(echo "$MIGRATE_OPTIONS" | jq -c '.[]'); do
+    opt_name=$(echo "$opt_json" | jq -r '.OptionName')
 
-    aws rds modify-option-group "${ADD_ARGS[@]}" --output json > /dev/null 2>&1 || {
+    # Reconstruct option settings from source
+    OPTIONS_SPEC=$(echo "$opt_json" | jq -c \
+      '[{OptionName: .OptionName, OptionSettings: [(.OptionSettings // [])[] | {Name: .Name, Value: .Value}]}]')
+
+    aws rds modify-option-group \
+      ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+      --option-group-name "$TARGET_OG" \
+      --options-to-include "$OPTIONS_SPEC" \
+      --apply-immediately \
+      --output json > /dev/null 2>&1 || {
       echo "WARNING: Failed to add option '$opt_name' to '$TARGET_OG'. May need manual configuration." >&2
       continue
     }
-    echo "  Added option: $opt_name" >&2
+    echo "  Added option: $opt_name (with settings)" >&2
   done
 fi
 

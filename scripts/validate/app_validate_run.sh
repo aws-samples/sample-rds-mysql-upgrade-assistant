@@ -96,9 +96,7 @@ if ! mysql "${CONN_ARGS[@]}" -e "SELECT 1" > /dev/null 2>&1; then
 fi
 
 # --- Find SQL files ---
-SQL_FILES=$(find "$SQL_DIR" -name 'app_validate*.sql' -type f 2>/dev/null | sort)
-
-if [[ -z "$SQL_FILES" ]]; then
+if ! find "$SQL_DIR" -name 'app_validate*.sql' -type f 2>/dev/null | grep -q .; then
   echo "No app_validate*.sql files found in $SQL_DIR" >&2
   echo "Copy app_validate_template.sql to app_validate.sql and customize it." >&2
   if [[ "$JSON_OUTPUT" == "true" ]]; then
@@ -115,7 +113,7 @@ PASS_COUNT=0
 FAIL_COUNT=0
 WARN_COUNT=0
 
-for sql_file in $SQL_FILES; do
+while IFS= read -r sql_file; do
   sql_name=$(basename "$sql_file")
   echo "Running: $sql_name ..." >&2
 
@@ -143,7 +141,7 @@ for sql_file in $SQL_FILES; do
       --arg name "$check_name" --arg status "$status" --arg detail "$detail" --arg file "$sql_name" \
       '. + [{"check": $name, "status": $status, "detail": $detail, "file": $file}]')
   done <<< "$OUTPUT"
-done
+done < <(find "$SQL_DIR" -name 'app_validate*.sql' -type f 2>/dev/null | sort)
 
 # --- Output ---
 if [[ "$JSON_OUTPUT" == "true" ]]; then

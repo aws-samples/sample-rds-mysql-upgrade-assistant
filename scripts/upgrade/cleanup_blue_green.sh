@@ -27,6 +27,7 @@ DEPLOYMENT_ID=""
 DELETE_SOURCE=false
 REGION_ARGS=()
 
+ORIG_ARGS=("$@")
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --deployment-id) DEPLOYMENT_ID="$2"; shift 2 ;;
@@ -43,7 +44,7 @@ fi
 
 # --- Audit init ---
 if type audit_init &>/dev/null; then
-  audit_init "cleanup_blue_green" "$@"
+  audit_init "cleanup_blue_green" "${ORIG_ARGS[@]}"
   audit_log "ACTION" "Cleanup deployment: $DEPLOYMENT_ID, delete_source: $DELETE_SOURCE"
 fi
 

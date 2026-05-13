@@ -32,7 +32,7 @@ ALTER USER 'username'@'host' IDENTIFIED WITH caching_sha2_password BY 'new_passw
 -- Identify affected columns
 SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, COLUMN_TYPE
 FROM information_schema.COLUMNS
-WHERE COLUMN_TYPE IN ('float', 'double') AND EXTRA = 'auto_increment'
+WHERE DATA_TYPE IN ('float', 'double') AND EXTRA LIKE '%auto_increment%'
   AND TABLE_SCHEMA NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys');
 
 -- Fix: change to INT or BIGINT

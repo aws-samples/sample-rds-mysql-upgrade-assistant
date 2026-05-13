@@ -27,6 +27,7 @@ DEPLOYMENT_ID=""
 TIMEOUT=300
 REGION_ARGS=()
 
+ORIG_ARGS=("$@")
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --deployment-id) DEPLOYMENT_ID="$2"; shift 2 ;;
@@ -43,7 +44,7 @@ fi
 
 # --- Audit init ---
 if type audit_init &>/dev/null; then
-  audit_init "switchover_blue_green" "$@"
+  audit_init "switchover_blue_green" "${ORIG_ARGS[@]}"
   audit_log "ACTION" "Switchover deployment: $DEPLOYMENT_ID"
 fi
 

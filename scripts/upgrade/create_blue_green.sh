@@ -30,6 +30,7 @@ TARGET_PARAM_GROUP=""
 TARGET_OPTION_GROUP=""
 REGION_ARGS=()
 
+ORIG_ARGS=("$@")
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --instance-id) INSTANCE_ID="$2"; shift 2 ;;
@@ -48,7 +49,7 @@ fi
 
 # --- Audit init ---
 if type audit_init &>/dev/null; then
-  audit_init "create_blue_green" "$@"
+  audit_init "create_blue_green" "${ORIG_ARGS[@]}"
   audit_log "INFO" "Instance: $INSTANCE_ID, Target: $TARGET_VERSION, ParamGroup: $TARGET_PARAM_GROUP, OptionGroup: ${TARGET_OPTION_GROUP:-none}"
 fi
 

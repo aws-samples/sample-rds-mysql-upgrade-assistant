@@ -452,11 +452,11 @@ SELECT 'columnDefinition' AS check_name, 'Error' AS severity,
        CONCAT(c.TABLE_SCHEMA, '.', c.TABLE_NAME, '.', c.COLUMN_NAME) AS object,
        CONCAT(UPPER(c.COLUMN_TYPE), ' column with AUTO_INCREMENT') AS description
 FROM information_schema.COLUMNS c
-WHERE c.COLUMN_TYPE IN ('float', 'double') AND c.EXTRA = 'auto_increment'
+WHERE c.DATA_TYPE IN ('float', 'double') AND c.EXTRA LIKE '%auto_increment%'
   AND c.TABLE_SCHEMA NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys');
 
 SET @col_def_count = (SELECT COUNT(*) FROM information_schema.COLUMNS c
-  WHERE c.COLUMN_TYPE IN ('float', 'double') AND c.EXTRA = 'auto_increment'
+  WHERE c.DATA_TYPE IN ('float', 'double') AND c.EXTRA LIKE '%auto_increment%'
     AND c.TABLE_SCHEMA NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys'));
 
 SELECT 'columnDefinition' AS check_name, 'PASS' AS severity, '' AS object,
