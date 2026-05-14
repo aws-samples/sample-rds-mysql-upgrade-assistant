@@ -169,7 +169,7 @@ cd Rds-Mysql-Upgrade-Assistant
 
 ```bash
 ./scripts/upgrade/create_blue_green.sh \
-  --instance-id my-db --target-version 8.4.0 --target-param-group my-mysql84-params
+  --instance-id my-db --target-version 8.4.8 --target-param-group my-mysql84-params
 ```
 
 ### 5. 批次升级（100 个以上实例）
