@@ -6,9 +6,9 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Database Administrator                    │
-│                                                              │
-│         Kiro IDE (Natural Language)    Shell (Direct)         │
+│                     Database Administrator                  │
+│                                                             │
+│         Kiro IDE (Natural Language)    Shell (Direct)       │
 └──────────────┬──────────────────────────────────────────────┘
                │                          │
                ▼                          │
@@ -20,42 +20,42 @@
            │                              │
            ▼                              ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                      Shell Scripts                            │
-│                                                              │
+│                      Shell Scripts                          │
+│                                                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
-│  │  discover_    │  │  precheck_   │  │  migrate_param_   │  │
-│  │  instances.sh │  │  run.sh      │  │  group.sh         │  │
-│  │  (AWS CLI)    │  │  + phase1.sql│  │  (rds-support-    │  │
+│  │  discover_   │  │  precheck_   │  │  migrate_param_   │  │
+│  │  instances.sh│  │  run.sh      │  │  group.sh         │  │
+│  │  (AWS CLI)   │  │  + phase1.sql│  │  (rds-support-    │  │
 │  │              │  │  (mysql cli) │  │   tools)          │  │
 │  └──────┬───────┘  └──────┬───────┘  └────────┬──────────┘  │
-│         │                 │                    │             │
+│         │                 │                   │             │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
 │  │  create_     │  │  monitor_    │  │  switchover_      │  │
 │  │  blue_green  │  │  blue_green  │  │  blue_green.sh    │  │
 │  │  .sh         │  │  .sh         │  │                   │  │
 │  └──────┬───────┘  └──────┬───────┘  └────────┬──────────┘  │
-│         │                 │                    │             │
+│         │                 │                   │             │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
 │  │  in_place_   │  │  post_upgrade│  │  cleanup_         │  │
 │  │  upgrade.sh  │  │  _validate.sh│  │  blue_green.sh    │  │
 │  └──────┬───────┘  └──────┬───────┘  └────────┬──────────┘  │
-│         │                 │                    │             │
+│         │                 │                   │             │
 │  ┌─────────────────────────────────────────────────────┐    │
-│  │              batch_upgrade.sh                        │    │
-│  │   Orchestrates all scripts with concurrency control  │    │
-│  │   Supports: blue_green | in_place strategies         │    │
-│  │   Parameter group dedup for shared groups            │    │
+│  │              batch_upgrade.sh                       │    │
+│  │   Orchestrates all scripts with concurrency control │    │
+│  │   Supports: blue_green | in_place strategies        │    │
+│  │   Parameter group dedup for shared groups           │    │
 │  └──────────────────────┬──────────────────────────────┘    │
 └─────────────────────────┼───────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                       AWS Cloud                              │
-│                                                              │
+│                       AWS Cloud                             │
+│                                                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
-│  │  Amazon RDS   │  │  Blue/Green  │  │  Secrets Manager  │  │
-│  │  MySQL 8.0    │  │  Deployments │  │  (credentials)    │  │
-│  │  → 8.4        │  │              │  │                   │  │
+│  │  Amazon RDS  │  │  Blue/Green  │  │  Secrets Manager  │  │
+│  │  MySQL 8.0   │  │  Deployments │  │  (credentials)    │  │
+│  │  → 8.4       │  │              │  │                   │  │
 │  └──────────────┘  └──────────────┘  └───────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -72,7 +72,7 @@
   ┌─────────┐    ┌──────────┐    ┌──────────┐    ┌────▼─────┐
   │9.Cleanup│◀───│8.Validate│◀───│7.Switch- │◀───│5.Monitor │
   │  (B/G)  │    │ (5 checks│    │  over    │    │  Status  │
-  │         │    │  + MySQL) │    │          │    │          │
+  │         │    │  + MySQL)│    │          │    │          │
   └─────────┘    └──────────┘    └──────────┘    └──────────┘
                                                       │
                                                  ┌────▼─────┐
