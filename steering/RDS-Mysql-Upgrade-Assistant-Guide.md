@@ -184,9 +184,7 @@ Ref: [Blue/Green Switchover Guardrails](https://docs.aws.amazon.com/AmazonRDS/la
   2. Rename the current green instance (e.g., `mydb` → `mydb-green`)
   3. Rename the old blue instance back to the original name (e.g., `mydb-old1` → `mydb`)
   4. Applications reconnect to the original endpoint automatically
-- Alternative revert methods:
-  - **Restore from snapshot**: Restore the pre-upgrade manual snapshot (creates a new instance)
-  - **Point-in-Time Recovery (PITR)**: Restore to a point before the switchover
+- **Data loss warning**: Rename-based revert restores the blue instance's state at the time of switchover. Any data written after switchover will be lost. PITR cannot downgrade the engine version. There is no fully automated path for zero data loss with version rollback.
 - Delete the B/G deployment only after confirming the upgrade is successful
 
 ### In-Place
