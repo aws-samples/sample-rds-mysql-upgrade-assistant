@@ -202,7 +202,7 @@ Ref: [Blue/Green Switchover Guardrails](https://docs.aws.amazon.com/AmazonRDS/la
 1. Start with non-production environments
 2. Run precheck on all instances first (`--dry-run`)
 3. Upgrade in waves: dev → staging → prod
-4. Use concurrency carefully (3-5 for B/G, 1 for in-place)
+4. Use concurrency carefully: 3-5 for B/G (green builds independently, blue stays live), 1 for in-place (each upgrade causes downtime — serial avoids multiple DBs offline simultaneously). Non-production in-place can use 2-3.
 5. Monitor CloudWatch during upgrades
 6. Keep blue environments for 24-48 hours after switchover
 7. Run pre-switchover readiness check before switchover (`pre_switchover_check.sh`) to verify deployment status, replication health, and instance availability
