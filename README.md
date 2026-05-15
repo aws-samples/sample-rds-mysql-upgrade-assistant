@@ -78,15 +78,15 @@ Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 → 8.4.
   └──────────┘    └──────────┘    └──────────┘    └────┬─────┘
                                                        │
   ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌────▼─────┐
-  │10.Cleanup│◀───│9.App     │◀───│8.Infra   │◀───│5.Monitor │
-  │  (B/G)   │    │ Validate │    │ Validate │    │  Status  │
+  │10.Cleanup│◀───│9.Connect │◀───│8.Switch- │◀───│5.Monitor │
+  │  (B/G)   │    │  Check   │    │  over    │    │  Status  │
   │          │    │          │    │          │    │          │
   └──────────┘    └──────────┘    └──────────┘    └────┬─────┘
                                                        │
                   ┌──────────┐    ┌──────────┐    ┌────▼─────┐
-                  │          │    │7.Switch- │◀───│6.Pre-SW  │
-                  │          │    │  over    │    │  Check   │
-                  │          │    │          │    │          │
+                  │7.Pre-SW  │◀───│6.Validate│◀───│  (green  │
+                  │  Check   │    │  Green   │    │  ready)  │
+                  │          │    │(infra+app│    │          │
                   └──────────┘    └──────────┘    └──────────┘
 ```
 
