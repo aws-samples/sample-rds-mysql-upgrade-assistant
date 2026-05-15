@@ -348,10 +348,10 @@ For each instance, the tool follows 10 steps:
 4. **Create B/G** — Create Blue/Green deployment (`create_blue_green.sh`)
    - **Note:** Blue/Green is not supported for instances with cross-Region read replicas or Multi-AZ DB Clusters. Use in-place upgrade for those.
 5. **Monitor** — Wait for green environment ready (`monitor_blue_green.sh`)
-6. **Pre-switchover check** — Verify guardrails: deployment status, replication health, instance availability (`pre_switchover_check.sh`)
-7. **Switchover** — Execute Blue/Green switchover (`switchover_blue_green.sh`)
-8. **Infra validate** — Post-upgrade infrastructure health checks (`post_upgrade_validate.sh`)
-9. **App validate** — Application-level validation with custom SQL (`app_validate_run.sh`)
+6. **Validate green** — Run infra + app validation against green environment (`post_upgrade_validate.sh`, `app_validate_run.sh`)
+7. **Pre-switchover check** — Verify guardrails: deployment status, replication health, instance availability (`pre_switchover_check.sh`)
+8. **Switchover** — Execute Blue/Green switchover (`switchover_blue_green.sh`)
+9. **Connectivity check** — Verify instance name and endpoint connectivity after switchover
 10. **Cleanup** — Remove old blue environment (`cleanup_blue_green.sh`)
 
 ## Precheck Reference
