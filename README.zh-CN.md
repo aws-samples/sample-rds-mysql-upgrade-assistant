@@ -340,10 +340,11 @@ Discover all MySQL 8.0 instances
 4. **创建 B/G** — 创建 Blue/Green 部署（`create_blue_green.sh`）
    - **注意：** 具有跨区域只读副本的实例不支持 Blue/Green。请对这些实例使用就地升级。
 5. **监控** — 等待绿色环境就绪（`monitor_blue_green.sh`）
-6. **Precheck 绿色环境** — 验证绿色环境通过 precheck
-7. **Switchover** — 执行 Blue/Green switchover（`switchover_blue_green.sh`）
-8. **验证** — 升级后健康检查（`post_upgrade_validate.sh`）
-9. **清理** — 移除旧的蓝色环境（`cleanup_blue_green.sh`）
+6. **验证绿色环境** — 对绿色环境执行基础设施和应用验证（`post_upgrade_validate.sh`、`app_validate_run.sh`）
+7. **Pre-switchover 检查** — 验证护栏：部署状态、复制健康、实例可用性（`pre_switchover_check.sh`）
+8. **Switchover** — 执行 Blue/Green switchover（`switchover_blue_green.sh`）
+9. **连接检查** — 验证 switchover 后实例名称和端点连接
+10. **清理** — 移除旧的蓝色环境（`cleanup_blue_green.sh`）
 
 ## Precheck 参考
 
