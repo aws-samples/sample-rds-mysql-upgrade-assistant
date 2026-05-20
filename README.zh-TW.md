@@ -14,7 +14,7 @@
                ▼                          │
 ┌──────────────────────────┐              │
 │   MCP Server (FastMCP)   │              │
-│   13 tools / stdio       │              │
+│   15 tools / stdio       │              │
 │   thin subprocess wrapper│              │
 └──────────┬───────────────┘              │
            │                              │
@@ -333,7 +333,7 @@ Discover all MySQL 8.0 instances
 
 ## 升級工作流程
 
-對於每個執行個體，工具遵循 9 個步驟：
+對於每個執行個體，工具遵循 10 個步驟：
 
 1. **探索** — 尋找 MySQL 8.0 執行個體（`discover_instances.sh`）
 2. **Precheck** — 執行 19 項相容性分析檢查（`mysql_precheck_run.sh`）
