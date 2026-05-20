@@ -153,3 +153,87 @@ def register_tools(mcp):
             capture_output=True, text=True, timeout=86400,
         )
         return result.stdout + (f"\nSTDERR: {result.stderr}" if result.returncode != 0 else "")
+
+    @mcp.tool()
+    async def generate_config(
+        region: str = "",
+        version_prefix: str = "8.0",
+        secret_prefix: str = "",
+        output: str = "",
+    ) -> str:
+        """Generate batch upgrade config from discovered instances."""
+        args = ["--version-prefix", version_prefix]
+        if region:
+            args += ["--region", region]
+        if secret_prefix:
+            args += ["--secret-prefix", secret_prefix]
+        if output:
+            args += ["--output", output]
+        result = subprocess.run(
+            ["bash", str(SCRIPTS_DIR / "batch/generate_config.sh")] + args,
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Config generation failed: {result.stderr.strip()}")
+        return result.stdout
+
+    @mcp.tool()
+    async def check_option_group(
+        instance_id: str,
+        region: str = "",
+        target_group: str = "",
+        dry_run: bool = False,
+    ) -> dict:
+        """Check and migrate option group for MySQL 8.4 upgrade."""
+        args = ["--instance-id", instance_id, "--json"]
+        if region:
+            args += ["--region", region]
+        if target_group:
+            args += ["--target-group", target_group]
+        if dry_run:
+            args.append("--dry-run")
+        return _run("params/check_option_group.sh", args)
+
+    @mcp.tool()
+    async def pre_switchover_check(
+        deployment_id: str,
+        region: str = "",
+    ) -> dict:
+        """Run pre-switchover readiness check for Blue/Green deployment."""
+        args = ["--deployment-id", deployment_id, "--json"]
+        if region:
+            args += ["--region", region]
+        return _run("upgrade/pre_switchover_check.sh", args)
+
+    @mcp.tool()
+    async def app_validate(
+        host: str,
+        user: str,
+        secret_id: str = "",
+        sql_dir: str = "",
+    ) -> dict:
+        """Run application validation SQL against a MySQL instance."""
+        args = ["-h", host, "-u", user, "--json"]
+        if secret_id:
+            args += ["--secret-id", secret_id]
+        if sql_dir:
+            args += ["--sql-dir", sql_dir]
+        return _run("validate/app_validate_run.sh", args, timeout=300)
+
+    @mcp.tool()
+    async def prepare_param_group(
+        instance_id: str,
+        target_family: str = "mysql8.4",
+        target_group: str = "",
+        region: str = "",
+        dry_run: bool = False,
+    ) -> dict:
+        """Prepare parameter group for upgrade (auto-detects default vs custom)."""
+        args = ["--instance-id", instance_id, "--target-family", target_family, "--json"]
+        if target_group:
+            args += ["--target-group", target_group]
+        if region:
+            args += ["--region", region]
+        if dry_run:
+            args.append("--dry-run")
+        return _run("params/prepare_param_group.sh", args)

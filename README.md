@@ -14,7 +14,7 @@ Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 → 8.4.
                ▼                          │
 ┌──────────────────────────┐              │
 │   MCP Server (FastMCP)   │              │
-│   8 tools / stdio        │              │
+│   13 tools / stdio       │              │
 │   thin subprocess wrapper│              │
 └──────────┬───────────────┘              │
            │                              │
