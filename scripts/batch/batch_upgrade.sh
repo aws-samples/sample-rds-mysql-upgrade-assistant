@@ -82,10 +82,10 @@ parse_config_json() {
   local count
   count=$(jq '.instances | length' "$config")
   for ((i=0; i<count; i++)); do
-    INSTANCE_IDS+=($(jq -r ".instances[$i].instance_id" "$config"))
-    INSTANCE_SECRETS+=($(jq -r ".instances[$i].secret_id // empty" "$config"))
-    INSTANCE_PARAM_GROUPS+=($(jq -r ".instances[$i].source_param_group // empty" "$config"))
-    INSTANCE_STRATEGIES+=($(jq -r ".instances[$i].strategy // \"blue_green\"" "$config"))
+    INSTANCE_IDS+=("$(jq -r ".instances[$i].instance_id" "$config")")
+    INSTANCE_SECRETS+=("$(jq -r ".instances[$i].secret_id // empty" "$config")")
+    INSTANCE_PARAM_GROUPS+=("$(jq -r ".instances[$i].source_param_group // empty" "$config")")
+    INSTANCE_STRATEGIES+=("$(jq -r ".instances[$i].strategy // \"blue_green\"" "$config")")
   done
 }
 
