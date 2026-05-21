@@ -271,7 +271,13 @@ upgrade_instance() {
     fi
 
     # Use cluster ID for the upgrade (not instance ID)
-    log_info "$id: Will upgrade at cluster level: $cluster_id"
+    # Show which instances belong to this cluster
+    local cluster_members
+    cluster_members=$(aws rds describe-db-clusters ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+      --db-cluster-identifier "$cluster_id" \
+      --query 'DBClusters[0].DBClusterMembers[].DBInstanceIdentifier' \
+      --output text 2>/dev/null || echo "$id")
+    log_info "$id: Will upgrade cluster '$cluster_id' (members: $cluster_members)"
     echo "$cluster_id" >> "$UPGRADED_CLUSTERS_FILE"
     id="$cluster_id"
   fi
@@ -360,7 +366,7 @@ upgrade_blue_green() {
     return
   fi
 
-  log_step "Step 3: Creating Blue/Green deployment for $id"
+  log_step "Step 3: Creating Blue/Green deployment for instance '$id'"
   local bg_args=(--instance-id "$id" --target-version "$TARGET_VERSION")
   [[ -n "$target_pg" ]] && bg_args+=(--target-param-group "$target_pg")
   [[ -n "$target_og" ]] && bg_args+=(--target-option-group "$target_og")
@@ -439,7 +445,7 @@ upgrade_in_place() {
     return
   fi
 
-  log_step "Step 3: In-place upgrade for $id"
+  log_step "Step 3: In-place upgrade for '$id' → MySQL $TARGET_VERSION"
   local up_args=(--instance-id "$id" --target-version "$TARGET_VERSION" --apply-immediately)
   [[ -n "$target_pg" ]] && up_args+=(--target-param-group "$target_pg")
   [[ -n "$target_og" ]] && up_args+=(--target-option-group "$target_og")
