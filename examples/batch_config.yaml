@@ -9,7 +9,7 @@
 #   the tool will only create one target parameter group and reuse it.
 #   If omitted, auto-detected from the instance.
 
-target_version: "8.4.0"
+target_version: "8.4.9"
 target_param_family: "mysql8.4"
 concurrency: 5
 precheck_phase2: false
