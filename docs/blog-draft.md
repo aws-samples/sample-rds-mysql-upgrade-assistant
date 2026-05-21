@@ -348,8 +348,6 @@ After running prechecks across your fleet, you'll likely see common patterns. Th
 
 2. **Fix ERROR findings first — they block the upgrade.** The most common blockers and their fixes:
 
-   **`authentication_fido` accounts (Check #5)** — Note: `authentication_fido` is an Enterprise Edition plugin and is not available on RDS for MySQL (INSTALL PLUGIN is restricted). This check will not produce ERROR findings in an RDS environment. It is included for completeness with MySQL Shell's checker logic and for users who may run the precheck against non-RDS MySQL instances.
-
    **FLOAT/DOUBLE with AUTO_INCREMENT (Check #9)** — Change column type:
    ```sql
    -- Find affected columns

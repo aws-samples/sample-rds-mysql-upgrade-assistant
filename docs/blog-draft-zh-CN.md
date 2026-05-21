@@ -341,8 +341,6 @@ Failed instances:
 
 2. **先修复 ERROR 发现——它们会阻挡升级。** 最常见的阻挡因素及其修复方式：
 
-   **`authentication_fido` 账户（检查 #5）** — 注意：`authentication_fido` 是 Enterprise Edition 插件，在 RDS for MySQL 上不可用（INSTALL PLUGIN 受限）。此检查在 RDS 环境中不会产生 ERROR 发现。它被包含在内是为了与 MySQL Shell 检查器逻辑保持一致，以及供可能对非 RDS MySQL 实例运行预检的用户使用。
-
    **FLOAT/DOUBLE 搭配 AUTO_INCREMENT（检查 #9）** — 变更列类型：
    ```sql
    -- Find affected columns
