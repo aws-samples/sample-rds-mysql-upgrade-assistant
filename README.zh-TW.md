@@ -201,6 +201,8 @@ cd sample-rds-mysql-upgrade-assistant
 ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --concurrency 3
 ```
 
+批次協調器也會執行執行時期自動偵測：如果執行個體屬於 Multi-AZ DB Cluster，會自動覆寫策略為 `in_place`，以叢集層級執行升級，並跳過同一叢集的其他成員。
+
 
 ## 使用 Kiro
 

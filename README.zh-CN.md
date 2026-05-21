@@ -201,6 +201,8 @@ cd sample-rds-mysql-upgrade-assistant
 ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --concurrency 3
 ```
 
+批次编排器也会执行运行时自动检测：如果实例属于 Multi-AZ DB Cluster，会自动覆盖策略为 `in_place`，以集群级别执行升级，并跳过同一集群的其他成员。
+
 
 ## 使用 Kiro
 

@@ -1,4 +1,4 @@
-# Automate large-scale RDS MySQL 8.0 to 8.4 upgrades with Kiro and MCP
+# How to automate large-scale RDS MySQL 8.0 to RDS MySQL 8.4 upgrades with Kiro and MCP
 
 > **Abstract:** When a customer has 100+ RDS MySQL 8.0 instances that need to upgrade to 8.4, they face several challenges. The RDS MySQL Upgrade Assistant is an open-source tool that provides a 19-check SQL precheck engine with a remediation playbook, automated parameter and option group migration, Blue/Green and in-place upgrade orchestration with pre-switchover guardrail checks, and an application validation framework — all accessible via shell scripts or natural language through Kiro IDE/CLI.
 
@@ -29,7 +29,7 @@ The solution consists of four components:
 
 2. **SQL precheck engine** — A pure SQL script that runs 19 compatibility checks against a MySQL 8.0 instance, detecting issues that would cause the upgrade to fail. The checks cover MySQL Shell's upgrade checker logic plus additional RDS-specific checks, all executable from any standard MySQL client.
 
-3. **MCP server** — A lightweight Python server built with FastMCP that exposes thirteen tools, each wrapping a shell script. This enables Kiro to call the scripts through natural language commands.
+3. **MCP server** — A lightweight Python server built with FastMCP that exposes fifteen tools, each wrapping a shell script. This enables Kiro to call the scripts through natural language commands.
 
 4. **Kiro steering file** — A knowledge document containing MySQL 8.0→8.4 upgrade best practices, known issues, and remediation patterns that Kiro references during interactive sessions.
 
@@ -41,9 +41,8 @@ The following diagram illustrates the solution architecture.
 
 ### Upgrade workflow
 
-For each instance, the tool follows a nine-step workflow:
+For each instance, the tool follows a ten-step workflow:
 
-*[Workflow diagram placeholder — create using AWS Architecture Icons showing the 9-step sequence]*
 
 1. **Discover** — Find all MySQL 8.0 instances using AWS CLI with optional tag-based filtering
 2. **Precheck** — Run 19 SQL-based compatibility checks against the source instance
@@ -105,6 +104,7 @@ The batch orchestrator manages upgrades across hundreds of instances with:
 
 - **Configurable concurrency** — Process N instances in parallel (recommended: 3–5 for Blue/Green, 1 for in-place)
 - **Strategy selection** — Choose Blue/Green (recommended for production) or in-place (for non-production) per instance
+- **Multi-AZ DB Cluster auto-detection** — Automatically detects cluster members, forces in-place strategy (Blue/Green not supported), upgrades at the cluster level, and skips duplicate members
 - **Automatic precheck gating** — Instances with ERROR-level findings are automatically skipped
 - **State file persistence** — Resume interrupted batches without re-processing completed instances
 - **Failure isolation** — A failed instance doesn't block remaining upgrades
@@ -126,7 +126,7 @@ Clone the project repository:
 
 ```bash
 git clone https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant.git
-cd Rds-Mysql-Upgrade-Assistant
+cd sample-rds-mysql-upgrade-assistant
 ```
 
 ### Install Kiro

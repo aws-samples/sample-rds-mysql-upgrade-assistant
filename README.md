@@ -209,6 +209,8 @@ Review and edit the generated config, then run:
 ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --concurrency 3
 ```
 
+The batch orchestrator also performs runtime auto-detection: if an instance belongs to a Multi-AZ DB Cluster, it automatically overrides the strategy to `in_place`, upgrades at the cluster level, and skips other members of the same cluster.
+
 ## Using with Kiro
 
 ### Install Kiro IDE

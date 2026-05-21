@@ -29,7 +29,7 @@ RDS MySQL Upgrade Assistant 採用 shell 優先的方法：bash 腳本使用 AWS
 
 2. **SQL precheck 引擎** — 一個純 SQL 腳本，對 MySQL 8.0 執行個體執行 19 項相容性檢查，偵測可能導致升級失敗的問題。這些檢查涵蓋 MySQL Shell 的升級檢查器邏輯以及額外的 RDS 特定檢查，全部可從任何標準 MySQL 用戶端執行。
 
-3. **MCP 伺服器** — 使用 FastMCP 建構的輕量 Python 伺服器，公開十三個工具，每個工具包裝一個 shell 腳本。這使 Kiro 能夠透過自然語言命令呼叫這些腳本。
+3. **MCP 伺服器** — 使用 FastMCP 建構的輕量 Python 伺服器，公開十五個工具，每個工具包裝一個 shell 腳本。這使 Kiro 能夠透過自然語言命令呼叫這些腳本。
 
 4. **Kiro steering 檔案** — 包含 MySQL 8.0→8.4 升級最佳實務、已知問題和修復模式的知識文件，Kiro 在互動式工作階段中參考此文件。
 
@@ -41,9 +41,8 @@ RDS MySQL Upgrade Assistant 採用 shell 優先的方法：bash 腳本使用 AWS
 
 ### 升級工作流程
 
-對於每個執行個體，工具遵循九步驟工作流程：
+對於每個執行個體，工具遵循十步驟工作流程：
 
-*[工作流程圖預留位置 — 使用 AWS Architecture Icons 建立，顯示九步驟序列]*
 
 1. **探索** — 使用 AWS CLI 搭配可選的標籤篩選找到所有 MySQL 8.0 執行個體
 2. **Precheck** — 對來源執行個體執行 19 項基於 SQL 的相容性檢查
@@ -106,6 +105,7 @@ precheck 引擎幫助在承諾升級*之前*識別相容性問題。它以純 SQ
 
 - **可設定的並行度** — 平行處理 N 個執行個體（建議：Blue/Green 為 3–5 個，就地升級為 1 個）
 - **策略選擇** — 每個執行個體選擇 Blue/Green（建議用於生產環境）或就地升級（用於非生產環境）
+- **Multi-AZ DB Cluster 自動偵測** — 自動偵測叢集成員，強制使用就地升級策略（Blue/Green 不支援），以叢集層級執行升級，並跳過重複成員
 - **自動 precheck 閘控** — 具有 ERROR 級別發現的執行個體會自動跳過
 - **狀態檔案持久化** — 恢復中斷的批次而不重新處理已完成的執行個體
 - **故障隔離** — 失敗的執行個體不會阻擋其餘升級
@@ -127,7 +127,7 @@ precheck 引擎幫助在承諾升級*之前*識別相容性問題。它以純 SQ
 
 ```bash
 git clone https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant.git
-cd Rds-Mysql-Upgrade-Assistant
+cd sample-rds-mysql-upgrade-assistant
 ```
 
 ### 安裝 Kiro
