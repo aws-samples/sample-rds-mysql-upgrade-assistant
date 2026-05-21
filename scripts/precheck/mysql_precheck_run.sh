@@ -112,10 +112,12 @@ if [[ ! -f "$PHASE1_SQL" ]]; then
   echo "ERROR: mysql_precheck_phase1.sql not found at $SCRIPT_DIR"; exit 1
 fi
 
-PHASE2_SQL=$(mktemp /tmp/mysql_precheck_phase2_XXXXXX)
-PHASE1_OUT=$(mktemp /tmp/mysql_precheck_phase1_XXXXXX)
-PHASE2_OUT=$(mktemp /tmp/mysql_precheck_phase2_out_XXXXXX)
-DEFAULTS_FILE=$(mktemp /tmp/mysql_precheck_cnf_XXXXXX)
+TMPDIR_PRECHECK=$(mktemp -d "${TMPDIR:-/tmp}/mysql_precheck_XXXXXX")
+PHASE2_SQL="$TMPDIR_PRECHECK/phase2.sql"
+PHASE1_OUT="$TMPDIR_PRECHECK/phase1.out"
+PHASE2_OUT="$TMPDIR_PRECHECK/phase2.out"
+DEFAULTS_FILE="$TMPDIR_PRECHECK/my.cnf"
+chmod 700 "$TMPDIR_PRECHECK"
 
 mkdir -p "$SCRIPT_DIR/precheck_reports"
 REPORT_OUT="$SCRIPT_DIR/precheck_reports/precheck_$(echo "$HOST" | tr '.' '_')_$(date +%Y%m%d_%H%M%S).log"
@@ -126,7 +128,7 @@ password=$PASSWORD
 EOF
 unset PASSWORD
 
-cleanup() { rm -f "$PHASE2_SQL" "$PHASE1_OUT" "$PHASE2_OUT" "$DEFAULTS_FILE"; }
+cleanup() { rm -rf "$TMPDIR_PRECHECK"; }
 trap cleanup EXIT
 
 CONN_ARGS=(--defaults-extra-file="$DEFAULTS_FILE" --connect-timeout=10 --ssl-mode=REQUIRED --host="$HOST" --port="$PORT" --user="$USER")
