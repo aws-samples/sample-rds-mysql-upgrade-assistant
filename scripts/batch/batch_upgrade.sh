@@ -16,7 +16,7 @@ set -uo pipefail
 CONFIG_PATH=""
 DRY_RUN=false
 RESUME=false
-CONCURRENCY=1
+CONCURRENCY=""
 REGION=""
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -64,7 +64,8 @@ parse_config() {
   VALIDATE_GREEN=$(grep '^validate_green:' "$config" | awk '{print $2}')
   AUTO_SWITCHOVER=$(grep '^auto_switchover:' "$config" | awk '{print $2}')
 
-  [[ -n "$CONFIG_CONCURRENCY" ]] && CONCURRENCY="${CONCURRENCY:-$CONFIG_CONCURRENCY}"
+  [[ -n "$CONFIG_CONCURRENCY" && -z "$CONCURRENCY" ]] && CONCURRENCY="$CONFIG_CONCURRENCY"
+  CONCURRENCY="${CONCURRENCY:-5}"
   PRECHECK_PHASE2="${PRECHECK_PHASE2:-false}"
   CLEANUP_BLUE="${CLEANUP_BLUE:-true}"
   VALIDATE_GREEN="${VALIDATE_GREEN:-true}"
