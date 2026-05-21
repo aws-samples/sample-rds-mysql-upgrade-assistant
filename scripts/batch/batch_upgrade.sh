@@ -157,14 +157,15 @@ if [[ "$RESUME" != "true" || ! -f "$STATE_FILE" ]]; then
 fi
 
 # --- Parameter group dedup ---
-declare -A PARAM_GROUP_MAP  # source_pg -> target_pg name
+# Note: Using temp file instead of associative array for bash 3.x compatibility
+PARAM_GROUP_MAP_FILE=$(mktemp /tmp/pg_map_XXXXXX)
 MIGRATED_GROUPS=()
 
 migrate_param_group_once() {
   local source_pg="$1"
   if [[ -z "$source_pg" ]]; then return; fi
-  if [[ -n "${PARAM_GROUP_MAP[$source_pg]:-}" ]]; then
-    log_info "Parameter group '$source_pg' already migrated to '${PARAM_GROUP_MAP[$source_pg]}'"
+  if grep -q "^${source_pg}=" "$PARAM_GROUP_MAP_FILE" 2>/dev/null; then
+    log_info "Parameter group '$source_pg' already migrated to '$(grep "^${source_pg}=" "$PARAM_GROUP_MAP_FILE" | cut -d= -f2)'"
     return
   fi
 
@@ -173,7 +174,7 @@ migrate_param_group_once() {
 
   if [[ "$DRY_RUN" == "true" ]]; then
     log_warn "[DRY RUN] Would migrate $source_pg → $target_pg"
-    PARAM_GROUP_MAP[$source_pg]="$target_pg"
+    echo "${source_pg}=${target_pg}" >> "$PARAM_GROUP_MAP_FILE"
     return
   fi
 
@@ -185,11 +186,11 @@ migrate_param_group_once() {
   else
     log_warn "migrate_param_group.sh not found. Skipping parameter migration."
   fi
-  PARAM_GROUP_MAP[$source_pg]="$target_pg"
+  echo "${source_pg}=${target_pg}" >> "$PARAM_GROUP_MAP_FILE"
 }
 
 # --- Option group dedup ---
-declare -A OPTION_GROUP_MAP  # source_og -> target_og name
+OPTION_GROUP_MAP_FILE=$(mktemp /tmp/og_map_XXXXXX)
 
 migrate_option_group_once() {
   local instance_id="$1"
@@ -208,8 +209,8 @@ migrate_option_group_once() {
   fi
 
   # Already migrated this option group
-  if [[ -n "${OPTION_GROUP_MAP[$source_og]:-}" ]]; then
-    log_info "Option group '$source_og' already migrated to '${OPTION_GROUP_MAP[$source_og]}'"
+  if grep -q "^${source_og}=" "$OPTION_GROUP_MAP_FILE" 2>/dev/null; then
+    log_info "Option group '$source_og' already migrated to '$(grep "^${source_og}=" "$OPTION_GROUP_MAP_FILE" | cut -d= -f2)'"
     return
   fi
 
@@ -234,7 +235,7 @@ migrate_option_group_once() {
   target_og=$(echo "$og_result" | jq -r '.target_option_group // empty' 2>/dev/null)
 
   if [[ -n "$target_og" ]]; then
-    OPTION_GROUP_MAP[$source_og]="$target_og"
+    echo "${source_og}=${target_og}" >> "$OPTION_GROUP_MAP_FILE"
     log_info "Option group '$source_og' → '$target_og'"
   fi
 }
@@ -294,7 +295,7 @@ upgrade_instance() {
   if [[ -n "$source_pg" && "$source_pg" != "default."* ]]; then
     migrate_param_group_once "$source_pg"
   fi
-  local target_pg="${PARAM_GROUP_MAP[$source_pg]:-}"
+  local target_pg="$(grep "^${source_pg}=" "$PARAM_GROUP_MAP_FILE" 2>/dev/null | cut -d= -f2)"
 
   # Step 2b: Migrate option group (dedup)
   migrate_option_group_once "$id"
@@ -305,7 +306,7 @@ upgrade_instance() {
     --output text 2>/dev/null || echo "")
   local target_og=""
   if [[ -n "$source_og" && "$source_og" != default:* && "$source_og" != "None" ]]; then
-    target_og="${OPTION_GROUP_MAP[$source_og]:-}"
+    target_og="$(grep "^${source_og}=" "$OPTION_GROUP_MAP_FILE" 2>/dev/null | cut -d= -f2)"
   fi
 
   set_status "$id" "IN_PROGRESS"
@@ -473,6 +474,9 @@ done
 wait
 
 ELAPSED=$(( $(date +%s) - START_TIME ))
+
+# --- Cleanup temp files ---
+rm -f "$PARAM_GROUP_MAP_FILE" "$OPTION_GROUP_MAP_FILE" 2>/dev/null
 
 # --- Summary ---
 COMPLETED=$(jq '[.instances[] | select(.status == "COMPLETED")] | length' "$STATE_FILE")
