@@ -122,6 +122,8 @@ REGION_ARGS=()
 # --- State file ---
 STATE_DIR="$(dirname "$CONFIG_PATH")"
 STATE_FILE="${STATE_DIR}/batch_state_$(date +%Y%m%d_%H%M%S).json"
+REPORT_DIR="${STATE_DIR}/batch_reports"
+mkdir -p "$REPORT_DIR"
 
 if [[ "$RESUME" == "true" ]]; then
   LATEST_STATE=$(ls -t "${STATE_DIR}"/batch_state_*.json 2>/dev/null | head -1)
@@ -473,10 +475,20 @@ upgrade_blue_green() {
       log_info "$id: Green instance: $green_instance_id"
 
       # Run infra validation on green
-      "$SCRIPT_DIR/validate/post_upgrade_validate.sh" --instance-id "$green_instance_id" \
-        ${REGION:+--region "$REGION"} --expected-version "$TARGET_VERSION" || {
+      local validate_output
+      validate_output=$("$SCRIPT_DIR/validate/post_upgrade_validate.sh" --instance-id "$green_instance_id" \
+        ${REGION:+--region "$REGION"} --expected-version "$TARGET_VERSION" --json 2>/dev/null) || true
+
+      # Save validation report
+      echo "$validate_output" > "$REPORT_DIR/${id}_validate_green.json" 2>/dev/null
+      log_info "$id: Validation report saved to $REPORT_DIR/${id}_validate_green.json"
+
+      # Check for failures
+      local validate_status
+      validate_status=$(echo "$validate_output" | jq -r '.overall // "UNKNOWN"' 2>/dev/null)
+      if [[ "$validate_status" == "FAIL" ]]; then
         log_warn "$id: Green environment validation had issues (non-blocking)"
-      }
+      fi
     else
       log_warn "$id: Could not determine green instance. Skipping green validation."
     fi
@@ -526,9 +538,16 @@ upgrade_blue_green() {
 
   # Step 8: Connectivity check
   log_step "Step 8: Post-switchover connectivity check"
-  "$SCRIPT_DIR/validate/post_upgrade_validate.sh" --instance-id "$id" ${REGION:+--region "$REGION"} --expected-version "$TARGET_VERSION" || {
-    log_warn "$id: Validation had issues"
-  }
+  local post_sw_output
+  post_sw_output=$("$SCRIPT_DIR/validate/post_upgrade_validate.sh" --instance-id "$id" \
+    ${REGION:+--region "$REGION"} --expected-version "$TARGET_VERSION" --json 2>/dev/null) || true
+  echo "$post_sw_output" > "$REPORT_DIR/${id}_post_switchover.json" 2>/dev/null
+
+  local post_sw_status
+  post_sw_status=$(echo "$post_sw_output" | jq -r '.overall // "UNKNOWN"' 2>/dev/null)
+  if [[ "$post_sw_status" == "FAIL" ]]; then
+    log_warn "$id: Post-switchover validation had issues"
+  fi
 
   # Step 9: Cleanup
   if [[ "$CLEANUP_BLUE" == "true" ]]; then
@@ -632,6 +651,7 @@ log_info "Failed:    $FAILED"
 log_info "Skipped:   $SKIPPED"
 log_info "Duration:  ${ELAPSED}s"
 log_info "State:     $STATE_FILE"
+log_info "Reports:   $REPORT_DIR"
 log_info "============================================================"
 
 if [[ "$FAILED" -gt 0 ]]; then
