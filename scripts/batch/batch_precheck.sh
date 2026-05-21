@@ -109,8 +109,13 @@ while IFS= read -r instance; do
   fi
   [[ "$RUN_PHASE2" == "true" ]] && PRECHECK_ARGS+=(--phase2)
 
-  # Run precheck
-  RESULT=$("$SCRIPT_DIR/precheck/mysql_precheck_run.sh" "${PRECHECK_ARGS[@]}" 2>/dev/null) || RESULT='{"summary":{"errors":999,"warnings":0,"notices":0}}'
+  # Run precheck — extract only the JSON block from output
+  RAW_OUTPUT=$("$SCRIPT_DIR/precheck/mysql_precheck_run.sh" "${PRECHECK_ARGS[@]}" 2>/dev/null) || RAW_OUTPUT=""
+  # The JSON block starts with { on its own line and ends with }
+  RESULT=$(echo "$RAW_OUTPUT" | awk '/^\{/{found=1} found{print} /^\}/{if(found) exit}')
+  if ! echo "$RESULT" | jq . > /dev/null 2>&1; then
+    RESULT='{"summary":{"errors":999,"warnings":0,"notices":0}}'
+  fi
 
   ERRORS=$(echo "$RESULT" | jq -r '.summary.errors // 999')
   WARNINGS=$(echo "$RESULT" | jq -r '.summary.warnings // 0')
