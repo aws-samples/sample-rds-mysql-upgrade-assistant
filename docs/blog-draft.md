@@ -117,7 +117,7 @@ To use this solution, you need:
 - `mysql` client (standard MySQL command-line client)
 - `jq` (JSON processor)
 - Python 3.10+ with [`uv`](https://docs.astral.sh/uv/getting-started/installation/) (for MCP server only — not required for standalone script usage)
-- AWS Secrets Manager secrets containing database credentials for each instance
+- AWS Secrets Manager secrets containing database credentials (recommended for automation — not required; scripts also support interactive password prompts and IAM database authentication)
 - Kiro IDE or Kiro CLI (for natural language interface — not required for standalone script usage)
 
 ## Getting started
@@ -328,7 +328,7 @@ When using this solution, keep the following best practices in mind:
 
 - **Start with non-production environments.** Upgrade dev and staging instances first to identify issues before touching production.
 - **Always run precheck first.** Use `--dry-run` mode to validate all instances before committing to upgrades. Fix all ERROR-level findings before proceeding.
-- **Use Blue/Green for production.** Blue/Green deployments provide minimal downtime (~30 seconds) during switchover. Note that switchover is a one-way operation — there is no reverse switchover. After switchover, the old blue instance is retained with a renamed identifier (e.g., `-old1`). To revert, delete the B/G deployment (keeping the old instance), rename the current green instance, then rename the old blue instance back to the original name. Alternatively, restore from a snapshot or use PITR. Reserve in-place upgrades for non-production instances where downtime is acceptable. Note: Blue/Green deployments are not supported for instances with cross-Region read replicas — use in-place upgrade for those instances.
+- **Use Blue/Green for production.** Blue/Green deployments provide minimal downtime (~30 seconds) during switchover. Note that switchover is a one-way operation — there is no reverse switchover. After switchover, the old blue instance is retained with a renamed identifier (e.g., `-old1`). To revert, delete the B/G deployment (keeping the old instance), rename the current green instance, then rename the old blue instance back to the original name. Alternatively, restore from a snapshot or use PITR. Reserve in-place upgrades for non-production instances where downtime is acceptable. Note: Blue/Green deployments have several limitations — they are not supported for Multi-AZ DB Clusters, instances with cross-Region read replicas, cascading read replicas, or instances managed by CloudFormation. For major version upgrades, instances associated with a custom option group also require the option group to be migrated first. For the full list of limitations, see [Blue/Green Deployments limitations](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments.html#blue-green-deployments-limitations). Use in-place upgrade for unsupported configurations.
 - **Read replicas are upgraded first.** When performing an in-place upgrade on an instance with read replicas, the tool automatically upgrades all replicas before the primary to maintain replication compatibility.
 - **Run precheck on the green environment.** After the Blue/Green deployment is created, run the precheck again on the green environment to verify the upgrade succeeded cleanly.
 - **Keep blue environments temporarily.** After switchover, retain the old blue instance for 24–48 hours. To revert to MySQL 8.0: delete the B/G deployment (keeping old instance), rename the green, then rename the blue back to the original name. **Important: rename-based revert restores the blue instance's state at the time of switchover — any data written after switchover will be lost. PITR cannot downgrade the engine version. There is no fully automated path for zero data loss with version rollback.** Evaluate the trade-off carefully before reverting.
@@ -348,13 +348,7 @@ After running prechecks across your fleet, you'll likely see common patterns. Th
 
 2. **Fix ERROR findings first — they block the upgrade.** The most common blockers and their fixes:
 
-   **`authentication_fido` accounts (Check #5)** — Must migrate before upgrade:
-   ```sql
-   -- Identify affected accounts
-   SELECT User, Host, plugin FROM mysql.user WHERE plugin = 'authentication_fido';
-   -- Migrate each account
-   ALTER USER 'username'@'host' IDENTIFIED WITH caching_sha2_password BY 'new_password';
-   ```
+   **`authentication_fido` accounts (Check #5)** — Note: `authentication_fido` is an Enterprise Edition plugin and is not available on RDS for MySQL (INSTALL PLUGIN is restricted). This check will not produce ERROR findings in an RDS environment. It is included for completeness with MySQL Shell's checker logic and for users who may run the precheck against non-RDS MySQL instances.
 
    **FLOAT/DOUBLE with AUTO_INCREMENT (Check #9)** — Change column type:
    ```sql

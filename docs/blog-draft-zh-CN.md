@@ -119,7 +119,7 @@ precheck 引擎帮助在承诺升级*之前*识别兼容性问题。它以纯 SQ
 - `mysql` 客户端（标准 MySQL 命令行客户端）
 - `jq`（JSON 处理器）
 - Python 3.10+ 搭配 [`uv`](https://docs.astral.sh/uv/getting-started/installation/)（仅 MCP 服务器需要——独立脚本使用不需要）
-- 包含每个实例数据库凭证的 AWS Secrets Manager 密钥
+- AWS Secrets Manager 密钥（推荐用于自动化——非必需；脚本也支持交互式密码提示和 IAM 数据库认证）
 - Kiro IDE 或 Kiro CLI（用于自然语言接口——独立脚本使用不需要）
 
 ## 开始使用
@@ -321,7 +321,7 @@ Failed instances:
 
 - **从非生产环境开始。** 先升级开发和暂存实例，在触及生产环境之前识别问题。
 - **务必先执行 precheck。** 使用 `--dry-run` 模式在承诺升级前验证所有实例。在继续之前修复所有 ERROR 级别的发现。
-- **生产环境使用 Blue/Green。** Blue/Green 部署在 switchover 期间提供最小停机时间（约 30 秒）。请注意 switchover 是单向操作——没有反向 switchover。switchover 后，旧的蓝色实例会以重新命名的标识符保留（例如 `-old1`）。要回退，请删除 B/G 部署（保留旧实例），重新命名当前的绿色实例，然后将旧的蓝色实例重新命名回原始名称。或者，从快照还原或使用 PITR。将就地升级保留给可接受停机的非生产实例。注意：具有跨区域只读副本的实例不支持 Blue/Green 部署——请对这些实例使用就地升级。
+- **生产环境使用 Blue/Green。** Blue/Green 部署在 switchover 期间提供最小停机时间（约 30 秒）。请注意 switchover 是单向操作——没有反向 switchover。switchover 后，旧的蓝色实例会以重新命名的标识符保留（例如 `-old1`）。要回退，请删除 B/G 部署（保留旧实例），重新命名当前的绿色实例，然后将旧的蓝色实例重新命名回原始名称。或者，从快照还原或使用 PITR。将就地升级保留给可接受停机的非生产实例。注意：Blue/Green 部署有多项限制——不支持 Multi-AZ DB Cluster、具有跨区域只读副本的实例、级联只读副本，以及由 CloudFormation 管理的实例。对于主要版本升级，关联自定义选项组的实例也需要先迁移选项组。完整限制列表请参阅 [Blue/Green Deployments 限制](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments.html#blue-green-deployments-limitations)。对于不支持的配置，请使用就地升级。
 - **只读副本会先升级。** 对具有只读副本的实例执行就地升级时，工具会自动在主要实例之前升级所有副本，以维持复制兼容性。
 - **对绿色环境执行 precheck。** Blue/Green 部署创建后，对绿色环境再次执行 precheck，以验证升级是否顺利完成。
 - **暂时保留蓝色环境。** switchover 后，保留旧的蓝色实例 24–48 小时。要回退至 MySQL 8.0：删除 B/G 部署（保留旧实例），重新命名绿色实例，然后将蓝色实例重新命名回原始名称。**重要：rename 回退会还原至 switchover 时的蓝色实例状态——switchover 后写入的任何数据都会丢失。PITR 无法降级引擎版本。目前没有零数据丢失且同时回退版本的全自动化路径。** 回退前请仔细评估取舍。
@@ -341,13 +341,7 @@ Failed instances:
 
 2. **先修复 ERROR 发现——它们会阻挡升级。** 最常见的阻挡因素及其修复方式：
 
-   **`authentication_fido` 账户（检查 #5）** — 必须在升级前迁移：
-   ```sql
-   -- Identify affected accounts
-   SELECT User, Host, plugin FROM mysql.user WHERE plugin = 'authentication_fido';
-   -- Migrate each account
-   ALTER USER 'username'@'host' IDENTIFIED WITH caching_sha2_password BY 'new_password';
-   ```
+   **`authentication_fido` 账户（检查 #5）** — 注意：`authentication_fido` 是 Enterprise Edition 插件，在 RDS for MySQL 上不可用（INSTALL PLUGIN 受限）。此检查在 RDS 环境中不会产生 ERROR 发现。它被包含在内是为了与 MySQL Shell 检查器逻辑保持一致，以及供可能对非 RDS MySQL 实例运行预检的用户使用。
 
    **FLOAT/DOUBLE 搭配 AUTO_INCREMENT（检查 #9）** — 变更列类型：
    ```sql
