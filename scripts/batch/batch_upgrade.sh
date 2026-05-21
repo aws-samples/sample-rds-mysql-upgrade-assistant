@@ -270,7 +270,6 @@ upgrade_instance() {
       strategy="in_place"
     fi
 
-    # Use cluster ID for the upgrade (not instance ID)
     # Show which instances belong to this cluster
     local cluster_members
     cluster_members=$(aws rds describe-db-clusters ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
@@ -279,19 +278,24 @@ upgrade_instance() {
       --output text 2>/dev/null || echo "$id")
     log_info "$id: Will upgrade cluster '$cluster_id' (members: $cluster_members)"
     echo "$cluster_id" >> "$UPGRADED_CLUSTERS_FILE"
-    id="$cluster_id"
   fi
 
-  log_info "========== [$((idx+1))/$TOTAL] $id (strategy: $strategy) =========="
+  # Determine the upgrade target: cluster ID for clusters, instance ID otherwise
+  local upgrade_target="$id"
+  if [[ -n "$cluster_id" && "$cluster_id" != "None" ]]; then
+    upgrade_target="$cluster_id"
+  fi
 
-  # Auto-detect source param group if not specified
+  log_info "========== [$((idx+1))/$TOTAL] $upgrade_target (strategy: $strategy) =========="
+
+  # Auto-detect source param group if not specified (always use instance ID)
   if [[ -z "$source_pg" ]]; then
     source_pg=$(aws rds describe-db-instances ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
       --db-instance-identifier "$id" \
       --query 'DBInstances[0].DBParameterGroups[0].DBParameterGroupName' --output text 2>/dev/null || echo "")
   fi
 
-  # Step 1: Precheck
+  # Step 1: Precheck (use instance ID for endpoint lookup)
   log_step "Step 1: Running precheck on $id"
   if [[ "$DRY_RUN" == "true" ]]; then
     log_warn "[DRY RUN] Would run precheck on $id"
@@ -349,7 +353,30 @@ upgrade_instance() {
   if [[ "$strategy" == "blue_green" ]]; then
     upgrade_blue_green "$id" "$target_pg" "$target_og"
   elif [[ "$strategy" == "in_place" ]]; then
-    upgrade_in_place "$id" "$target_pg" "$target_og"
+    # For clusters, pass cluster ID but track status with instance ID
+    if [[ "$upgrade_target" != "$id" ]]; then
+      # Cluster upgrade — call in_place_upgrade.sh directly (skip set_status inside)
+      log_step "Step 3: In-place upgrade for cluster '$upgrade_target' → MySQL $TARGET_VERSION"
+      local up_args=(--instance-id "$upgrade_target" --target-version "$TARGET_VERSION" --apply-immediately)
+      [[ -n "$target_pg" ]] && up_args+=(--target-param-group "$target_pg")
+      [[ -n "$target_og" ]] && up_args+=(--target-option-group "$target_og")
+      [[ -n "$REGION" ]] && up_args+=(--region "$REGION")
+
+      if [[ "$DRY_RUN" == "true" ]]; then
+        log_warn "[DRY RUN] Would in-place upgrade cluster $upgrade_target"
+        set_status "$id" "COMPLETED" "DRY RUN"
+      else
+        "$SCRIPT_DIR/upgrade/in_place_upgrade.sh" "${up_args[@]}" || {
+          log_error "$id: In-place cluster upgrade failed ($upgrade_target)"
+          set_status "$id" "FAILED" "In-place cluster upgrade failed"
+          return
+        }
+        set_status "$id" "COMPLETED" "Cluster $upgrade_target upgraded"
+        log_info "$id: Cluster '$upgrade_target' upgrade completed successfully"
+      fi
+    else
+      upgrade_in_place "$id" "$target_pg" "$target_og"
+    fi
   else
     log_error "$id: Unknown strategy '$strategy'"
     set_status "$id" "FAILED" "Unknown strategy: $strategy"

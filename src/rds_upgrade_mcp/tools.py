@@ -139,7 +139,9 @@ def register_tools(mcp):
         concurrency: int = 1,
         region: str = "",
     ) -> str:
-        """Run batch upgrade for multiple instances."""
+        """Run batch upgrade for multiple instances.
+        Note: In-place upgrades may take 30-60 minutes per instance.
+        Use dry_run=True first to validate the plan."""
         args = ["--config", config_path]
         if dry_run:
             args.append("--dry-run")
@@ -237,3 +239,38 @@ def register_tools(mcp):
         if dry_run:
             args.append("--dry-run")
         return _run("params/prepare_param_group.sh", args)
+
+    @mcp.tool()
+    async def in_place_upgrade(
+        instance_id: str,
+        target_version: str = "8.4.8",
+        target_param_group: str = "",
+        target_option_group: str = "",
+        apply_immediately: bool = True,
+        region: str = "",
+    ) -> dict:
+        """Run in-place upgrade for an RDS MySQL instance or cluster."""
+        args = ["--instance-id", instance_id, "--target-version", target_version]
+        if target_param_group:
+            args += ["--target-param-group", target_param_group]
+        if target_option_group:
+            args += ["--target-option-group", target_option_group]
+        if apply_immediately:
+            args.append("--apply-immediately")
+        if region:
+            args += ["--region", region]
+        return _run("upgrade/in_place_upgrade.sh", args, timeout=7200)
+
+    @mcp.tool()
+    async def cleanup_blue_green(
+        deployment_id: str,
+        delete_source: bool = False,
+        region: str = "",
+    ) -> dict:
+        """Delete a Blue/Green deployment after successful switchover."""
+        args = ["--deployment-id", deployment_id]
+        if delete_source:
+            args.append("--delete-source")
+        if region:
+            args += ["--region", region]
+        return _run("upgrade/cleanup_blue_green.sh", args)
