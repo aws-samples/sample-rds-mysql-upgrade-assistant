@@ -154,8 +154,8 @@ Instances using default parameter groups don't need migration — RDS auto-assig
 Use `check_option_group.sh` to handle custom option groups:
 - **Default option group** → skip (RDS auto-assigns `default:mysql-8.4`)
 - **Custom with MARIADB_AUDIT_PLUGIN** → auto-creates MySQL 8.4 option group with same options
-- **Custom with MEMCACHED** → MEMCACHED excluded (not supported in 8.4), other options migrated
-- **Empty custom group** → creates empty MySQL 8.4 option group
+- **Custom with MEMCACHED** → MEMCACHED excluded (not supported in 8.4). If only option, skip (use default:mysql-8.4)
+- **Empty custom group** → skip (use default:mysql-8.4, avoids B/G eligibility issues)
 
 Only instances with custom option groups need migration. Pass the target option group to Blue/Green (`--target-option-group`) or in-place upgrade (`--target-option-group`).
 

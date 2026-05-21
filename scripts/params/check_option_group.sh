@@ -8,10 +8,11 @@
 #
 # Logic:
 #   - If instance uses default option group → skip (RDS auto-assigns default:mysql-8.4)
-#   - If custom option group → create MySQL 8.4 option group
+#   - If custom option group is empty → skip (use default:mysql-8.4, avoids B/G issues)
+#   - If custom option group has only unsupported options (MEMCACHED) → skip
+#   - If custom option group has supported options → create MySQL 8.4 option group
 #     - MEMCACHED excluded (not supported in 8.4)
 #     - MARIADB_AUDIT_PLUGIN and other supported options are migrated
-#     - Empty custom group → create empty 8.4 option group
 #
 # Usage:
 #   ./check_option_group.sh --instance-id <id> [--region <region>]
@@ -105,6 +106,31 @@ for opt_name in $(echo "$OPTIONS" | jq -r '.[].OptionName'); do
 done
 
 MIGRATE_COUNT=$(echo "$MIGRATE_OPTIONS" | jq 'length')
+
+# --- Empty custom option group → skip (use default:mysql-8.4 instead) ---
+if [[ "$MIGRATE_COUNT" -eq 0 && $(echo "$SKIPPED_OPTIONS" | jq 'length') -eq 0 ]]; then
+  if [[ "$JSON_OUTPUT" == "true" ]]; then
+    jq -n --arg id "$INSTANCE_ID" --arg og "$OG_NAME" \
+      '{instance_id: $id, option_group: $og, action: "skip", reason: "Empty custom option group. No target option group needed — RDS will use default:mysql-8.4.", target_option_group: null}'
+  else
+    echo "Option Group: $OG_NAME (CUSTOM — empty)"
+    echo "Action: SKIP — No options configured. RDS will use default:mysql-8.4 during upgrade."
+  fi
+  exit 0
+fi
+
+# If only unsupported options (e.g., MEMCACHED only) → also skip
+if [[ "$MIGRATE_COUNT" -eq 0 && $(echo "$SKIPPED_OPTIONS" | jq 'length') -gt 0 ]]; then
+  if [[ "$JSON_OUTPUT" == "true" ]]; then
+    jq -n --arg id "$INSTANCE_ID" --arg og "$OG_NAME" --argjson skipped "$SKIPPED_OPTIONS" \
+      '{instance_id: $id, option_group: $og, action: "skip", reason: "All options unsupported in 8.4 (excluded). No target option group needed.", target_option_group: null, options_skipped: $skipped}'
+  else
+    echo "Option Group: $OG_NAME (CUSTOM)"
+    echo "All options unsupported in MySQL 8.4 (excluded): $(echo "$SKIPPED_OPTIONS" | jq -r 'join(", ")')"
+    echo "Action: SKIP — No target option group needed. RDS will use default:mysql-8.4."
+  fi
+  exit 0
+fi
 
 # --- Create target option group for MySQL 8.4 ---
 if [[ -z "$TARGET_OG" ]]; then
