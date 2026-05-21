@@ -16,6 +16,7 @@ set -uo pipefail
 CONFIG_PATH=""
 DRY_RUN=false
 RESUME=false
+VALIDATE_CONFIG_ONLY=false
 CONCURRENCY=""
 REGION=""
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -32,6 +33,7 @@ while [[ $# -gt 0 ]]; do
     --config) CONFIG_PATH="$2"; shift 2 ;;
     --dry-run) DRY_RUN=true; shift ;;
     --resume) RESUME=true; shift ;;
+    --validate-config) VALIDATE_CONFIG_ONLY=true; shift ;;
     --concurrency) CONCURRENCY="$2"; shift 2 ;;
     --region) REGION="$2"; shift 2 ;;
     *) echo "Unknown option: $1"; exit 1 ;;
@@ -39,7 +41,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$CONFIG_PATH" ]]; then
-  echo "Usage: $0 --config <config.yaml> [--dry-run] [--resume] [--concurrency <N>] [--region <region>]"
+  echo "Usage: $0 --config <config.yaml> [--dry-run] [--resume] [--validate-config] [--concurrency <N>] [--region <region>]"
   exit 1
 fi
 
@@ -115,6 +117,67 @@ TOTAL=${#INSTANCE_IDS[@]}
 
 if [[ "$TOTAL" -eq 0 ]]; then
   log_error "No instances found in config"; exit 1
+fi
+
+# --- Validate config mode (no AWS calls) ---
+if [[ "$VALIDATE_CONFIG_ONLY" == "true" ]]; then
+  echo "============================================================"
+  echo "Config Validation: $CONFIG_PATH"
+  echo "============================================================"
+  echo "Target version:    $TARGET_VERSION"
+  echo "Param family:      $TARGET_PARAM_FAMILY"
+  echo "Concurrency:       $CONCURRENCY"
+  echo "Precheck phase2:   $PRECHECK_PHASE2"
+  echo "Cleanup blue:      $CLEANUP_BLUE"
+  echo "Validate green:    $VALIDATE_GREEN"
+  echo "Auto switchover:   $AUTO_SWITCHOVER"
+  echo "Total instances:   $TOTAL"
+  echo "------------------------------------------------------------"
+
+  ERRORS=0
+  BG_COUNT=0
+  IP_COUNT=0
+
+  for ((i=0; i<TOTAL; i++)); do
+    id="${INSTANCE_IDS[$i]}"
+    secret="${INSTANCE_SECRETS[$i]}"
+    pg="${INSTANCE_PARAM_GROUPS[$i]}"
+    strategy="${INSTANCE_STRATEGIES[$i]}"
+
+    # Validate strategy
+    if [[ "$strategy" != "blue_green" && "$strategy" != "in_place" ]]; then
+      echo "  ERROR: [$id] Invalid strategy: '$strategy' (must be blue_green or in_place)"
+      ERRORS=$((ERRORS + 1))
+    elif [[ "$strategy" == "blue_green" ]]; then
+      BG_COUNT=$((BG_COUNT + 1))
+    else
+      IP_COUNT=$((IP_COUNT + 1))
+    fi
+
+    # Validate instance_id not empty
+    if [[ -z "$id" ]]; then
+      echo "  ERROR: Instance #$((i+1)) has empty instance_id"
+      ERRORS=$((ERRORS + 1))
+      continue
+    fi
+
+    # Report
+    printf "  %-30s strategy=%-10s secret=%-5s param_group=%s\n" \
+      "$id" "$strategy" "${secret:+yes}" "${pg:-auto-detect}"
+  done
+
+  echo "------------------------------------------------------------"
+  echo "Blue/Green:  $BG_COUNT"
+  echo "In-place:    $IP_COUNT"
+  echo "------------------------------------------------------------"
+
+  if [[ "$ERRORS" -gt 0 ]]; then
+    echo "VALIDATION FAILED: $ERRORS error(s) found."
+    exit 1
+  else
+    echo "VALIDATION PASSED: Config is valid."
+    exit 0
+  fi
 fi
 
 REGION_ARGS=()
