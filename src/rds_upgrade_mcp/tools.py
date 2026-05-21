@@ -280,3 +280,32 @@ def register_tools(mcp):
         if region:
             args += ["--region", region]
         return _run("upgrade/cleanup_blue_green.sh", args)
+
+    @mcp.tool()
+    async def batch_precheck(
+        user: str,
+        secret_id: str = "",
+        password: str = "",
+        region: str = "",
+        version_prefix: str = "8.0",
+        phase2: bool = False,
+    ) -> str:
+        """Run prechecks on all MySQL 8.0 instances in batch.
+        Credential priority: secret_id > password.
+        Returns summary with pass/fail counts per instance."""
+        args = ["-u", user]
+        if secret_id:
+            args += ["--secret-id", secret_id]
+        elif password:
+            args += ["-p", password]
+        if region:
+            args += ["--region", region]
+        args += ["--version-prefix", version_prefix]
+        if phase2:
+            args.append("--phase2")
+        args.append("--json")
+        result = subprocess.run(
+            ["bash", str(SCRIPTS_DIR / "batch/batch_precheck.sh")] + args,
+            capture_output=True, text=True, timeout=1800,
+        )
+        return result.stdout + (f"\nSTDERR: {result.stderr}" if result.returncode != 0 else "")

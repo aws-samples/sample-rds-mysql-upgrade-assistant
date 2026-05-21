@@ -25,11 +25,11 @@ RDS MySQL Upgrade Assistant 采用 shell 优先的方法：bash 脚本使用 AWS
 
 解决方案由四个组件组成：
 
-1. **Shell 脚本** : 十五个 bash 脚本加上两个安全库涵盖实例探索、兼容性 precheck、参数迁移、Blue/Green 部署生命周期、就地升级、升级后验证和批次编排。所有脚本使用 AWS CLI 进行 RDS 操作，使用 `mysql` 客户端进行数据库连接。
+1. **Shell 脚本** : 十六个 bash 脚本加上两个安全库涵盖实例探索、兼容性 precheck、参数迁移、Blue/Green 部署生命周期、就地升级、升级后验证和批次编排。所有脚本使用 AWS CLI 进行 RDS 操作，使用 `mysql` 客户端进行数据库连接。
 
 2. **SQL precheck 引擎** : 一个纯 SQL 脚本，对 MySQL 8.0 实例执行 19 项兼容性检查，检测可能导致升级失败的问题。这些检查涵盖 MySQL Shell 的升级检查器逻辑以及额外的 RDS 特定检查，全部可从任何标准 MySQL 客户端执行。
 
-3. **MCP 服务器** : 使用 FastMCP 构建的轻量 Python 服务器，公开十五个工具，每个工具包装一个 shell 脚本。这使 Kiro 能够通过自然语言命令调用这些脚本。
+3. **MCP 服务器** : 使用 FastMCP 构建的轻量 Python 服务器，公开十六个工具，每个工具包装一个 shell 脚本。这使 Kiro 能够通过自然语言命令调用这些脚本。
 
 4. **Kiro steering 文件** — 包含 MySQL 8.0→8.4 升级最佳实践、已知问题和修复模式的知识文档，Kiro 在交互式会话中参考此文档。
 
@@ -128,7 +128,7 @@ precheck 引擎帮助在承诺升级*之前*识别兼容性问题。它以纯 SQ
 
 ```bash
 git clone https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant.git
-cd Rds-Mysql-Upgrade-Assistant
+cd sample-rds-mysql-upgrade-assistant
 ```
 
 ### 安装 Kiro

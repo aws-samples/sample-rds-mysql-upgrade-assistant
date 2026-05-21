@@ -14,7 +14,7 @@ Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 → 8.4.
                ▼                          │
 ┌──────────────────────────┐              │
 │   MCP Server (FastMCP)   │              │
-│   15 tools / stdio       │              │
+│   16 tools / stdio       │              │
 │   thin subprocess wrapper│              │
 └──────────┬───────────────┘              │
            │                              │
@@ -50,11 +50,11 @@ Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 → 8.4.
 │  │ (infra check) │  │ (app check)   │  │ (orchestrator) │   │
 │  └───────────────┘  └───────────────┘  └────────────────┘   │
 │                                                             │
-│  ┌───────────────┐                                           │
-│  │ batch_        │                                           │
-│  │ precheck.sh   │                                           │
-│  │ (fleet check) │                                           │
-│  └───────────────┘                                           │
+│  ┌───────────────┐                                          │
+│  │ batch_        │                                          │
+│  │ precheck.sh   │                                          │
+│  │ (fleet check) │                                          │
+│  └───────────────┘                                          │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │  lib/audit_log.sh    lib/integrity_check.sh         │    │

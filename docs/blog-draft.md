@@ -25,11 +25,11 @@ The RDS MySQL Upgrade Assistant takes a shell-first approach: bash scripts handl
 
 The solution consists of four components:
 
-1. **Shell scripts** — Fifteen bash scripts plus two security libraries covering instance discovery, compatibility precheck, parameter migration, Blue/Green deployment lifecycle, in-place upgrade, post-upgrade validation, and batch orchestration. All scripts use AWS CLI for RDS operations and the `mysql` client for database connectivity.
+1. **Shell scripts** — Sixteen bash scripts plus two security libraries covering instance discovery, compatibility precheck, parameter migration, Blue/Green deployment lifecycle, in-place upgrade, post-upgrade validation, and batch orchestration. All scripts use AWS CLI for RDS operations and the `mysql` client for database connectivity.
 
 2. **SQL precheck engine** — A pure SQL script that runs 19 compatibility checks against a MySQL 8.0 instance, detecting issues that would cause the upgrade to fail. The checks cover MySQL Shell's upgrade checker logic plus additional RDS-specific checks, all executable from any standard MySQL client.
 
-3. **MCP server** — A lightweight Python server built with FastMCP that exposes fifteen tools, each wrapping a shell script. This enables Kiro to call the scripts through natural language commands.
+3. **MCP server** — A lightweight Python server built with FastMCP that exposes sixteen tools, each wrapping a shell script. This enables Kiro to call the scripts through natural language commands.
 
 4. **Kiro steering file** — A knowledge document containing MySQL 8.0→8.4 upgrade best practices, known issues, and remediation patterns that Kiro references during interactive sessions.
 

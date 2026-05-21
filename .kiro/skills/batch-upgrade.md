@@ -48,26 +48,33 @@ bash scripts/params/check_option_group.sh --instance-id <instance_id> --dry-run 
 
 Add `--target-option-group` to the batch config for instances that need it.
 
-### Step 3: Dry Run
+### Step 3: Batch Precheck (Optional)
+Run prechecks on all instances before committing to upgrades:
+```bash
+bash scripts/batch/batch_precheck.sh -u <user> --secret-id <secret_id> --json
+```
+Instances with errors will be automatically skipped during batch upgrade, but running precheck first helps identify and fix issues proactively.
+
+### Step 4: Dry Run
 ```bash
 bash scripts/batch/batch_upgrade.sh --config batch_config.yaml --dry-run
 ```
 Report the dry run results. Confirm with user before proceeding.
 
-### Step 4: Execute Batch Upgrade
+### Step 5: Execute Batch Upgrade
 ```bash
 bash scripts/batch/batch_upgrade.sh \
   --config batch_config.yaml --concurrency <concurrency>
 ```
 Monitor progress and report the summary (completed, failed, skipped).
 
-### Step 5: Verify All Upgraded
+### Step 6: Verify All Upgraded
 ```bash
 bash scripts/inventory/discover_instances.sh --version-prefix 8.0 --json
 ```
 This should return an empty list. If instances remain, report them.
 
-### Step 6: Final Validation
+### Step 7: Final Validation
 ```bash
 bash scripts/inventory/discover_instances.sh --version-prefix 8.4 --json
 ```

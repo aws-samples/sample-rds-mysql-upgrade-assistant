@@ -14,7 +14,7 @@
                ▼                          │
 ┌──────────────────────────┐              │
 │   MCP Server (FastMCP)   │              │
-│   15 tools / stdio       │              │
+│   16 tools / stdio       │              │
 │   thin subprocess wrapper│              │
 └──────────┬───────────────┘              │
            │                              │
@@ -22,31 +22,45 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                      Shell Scripts                          │
 │                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
-│  │  discover_   │  │  precheck_   │  │  migrate_param_   │  │
-│  │  instances.sh│  │  run.sh      │  │  group.sh         │  │
-│  │  (AWS CLI)   │  │  + phase1.sql│  │  (rds-support-    │  │
-│  │              │  │  (mysql cli) │  │   tools)          │  │
-│  └──────┬───────┘  └──────┬───────┘  └────────┬──────────┘  │
-│         │                 │                   │             │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
-│  │  create_     │  │  monitor_    │  │  switchover_      │  │
-│  │  blue_green  │  │  blue_green  │  │  blue_green.sh    │  │
-│  │  .sh         │  │  .sh         │  │                   │  │
-│  └──────┬───────┘  └──────┬───────┘  └────────┬──────────┘  │
-│         │                 │                   │             │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
-│  │  in_place_   │  │  post_upgrade│  │  cleanup_         │  │
-│  │  upgrade.sh  │  │  _validate.sh│  │  blue_green.sh    │  │
-│  └──────┬───────┘  └──────┬───────┘  └────────┬──────────┘  │
-│         │                 │                   │             │
+│  ┌───────────────┐  ┌───────────────┐  ┌────────────────┐   │
+│  │ discover_     │  │ precheck_     │  │ generate_      │   │
+│  │ instances.sh  │  │ run.sh        │  │ config.sh      │   │
+│  │ (inventory)   │  │ + phase1.sql  │  │ (batch config) │   │
+│  └───────┬───────┘  └───────┬───────┘  └───────┬────────┘   │
+│          │                  │                  │            │
+│  ┌───────────────┐  ┌───────────────┐  ┌────────────────┐   │
+│  │ prepare_      │  │ check_option_ │  │ migrate_param_ │   │
+│  │ param_group.sh│  │ group.sh      │  │ group.sh       │   │
+│  │ (auto-detect) │  │ (option grp)  │  │ (rds-support)  │   │
+│  └───────┬───────┘  └───────┬───────┘  └───────┬────────┘   │
+│          │                  │                  │            │
+│  ┌───────────────┐  ┌───────────────┐  ┌────────────────┐   │
+│  │ create_       │  │ monitor_      │  │ pre_switchover_│   │
+│  │ blue_green.sh │  │ blue_green.sh │  │ check.sh       │   │
+│  └───────┬───────┘  └───────┬───────┘  └───────┬────────┘   │
+│          │                  │                  │            │
+│  ┌───────────────┐  ┌───────────────┐  ┌────────────────┐   │
+│  │ switchover_   │  │ in_place_     │  │ cleanup_       │   │
+│  │ blue_green.sh │  │ upgrade.sh    │  │ blue_green.sh  │   │
+│  └───────┬───────┘  └───────┬───────┘  └───────┬────────┘   │
+│          │                  │                  │            │
+│  ┌───────────────┐  ┌───────────────┐  ┌────────────────┐   │
+│  │ post_upgrade_ │  │ app_validate_ │  │ batch_         │   │
+│  │ validate.sh   │  │ run.sh        │  │ upgrade.sh     │   │
+│  │ (infra check) │  │ (app check)   │  │ (orchestrator) │   │
+│  └───────────────┘  └───────────────┘  └────────────────┘   │
+│                                                             │
+│  ┌───────────────┐                                          │
+│  │ batch_        │                                          │
+│  │ precheck.sh   │                                          │
+│  │ (fleet check) │                                          │
+│  └───────────────┘                                          │
+│                                                             │
 │  ┌─────────────────────────────────────────────────────┐    │
-│  │              batch_upgrade.sh                       │    │
-│  │   Orchestrates all scripts with concurrency control │    │
-│  │   Supports: blue_green | in_place strategies        │    │
-│  │   Parameter group dedup for shared groups           │    │
-│  └──────────────────────┬──────────────────────────────┘    │
-└─────────────────────────┼───────────────────────────────────┘
+│  │  lib/audit_log.sh    lib/integrity_check.sh         │    │
+│  │  (security: logging, checksums, dependency verify)  │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐

@@ -19,12 +19,23 @@ Discover all instances and run prechecks to assess upgrade readiness.
 bash scripts/inventory/discover_instances.sh --version-prefix 8.0 --json
 ```
 
-### Step 2: Run Precheck on Each Instance
-For each discovered instance with an endpoint and available credentials:
+### Step 2: Run Batch Precheck
+Use the batch precheck script to check all instances at once:
+```bash
+# Using Secrets Manager (recommended)
+bash scripts/batch/batch_precheck.sh -u <user> --secret-id <secret_id> --json
+
+# Using interactive password (all instances share same password)
+bash scripts/batch/batch_precheck.sh -u <user>
+
+# Using IAM database authentication
+bash scripts/batch/batch_precheck.sh -u <iam_user> --iam --json
+```
+
+Or run individually for specific instances:
 ```bash
 bash scripts/precheck/mysql_precheck_run.sh \
-  -h <endpoint> -u <user> --secret-id <secret_prefix><instance_id> \
-  --phase2 --json
+  -h <endpoint> -u <user> --secret-id <secret_id> --json
 ```
 
 ### Step 3: Generate Summary Report
