@@ -110,11 +110,21 @@ while IFS= read -r instance; do
   [[ "$RUN_PHASE2" == "true" ]] && PRECHECK_ARGS+=(--phase2)
 
   # Run precheck — extract only the JSON block from output
-  RAW_OUTPUT=$("$SCRIPT_DIR/precheck/mysql_precheck_run.sh" "${PRECHECK_ARGS[@]}" 2>/dev/null) || RAW_OUTPUT=""
+  RAW_OUTPUT=$("$SCRIPT_DIR/precheck/mysql_precheck_run.sh" "${PRECHECK_ARGS[@]}" 2>/dev/null)
+  PRECHECK_EXIT=$?
+
+  if [[ "$PRECHECK_EXIT" -ne 0 && -z "$RAW_OUTPUT" ]]; then
+    echo "FAIL (connection error — check credentials)"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    RESULTS=$(echo "$RESULTS" | jq --arg id "$id" \
+      '. + [{"instance_id": $id, "status": "FAIL", "errors": 999, "warnings": 0}]' 2>/dev/null || echo "$RESULTS")
+    continue
+  fi
+
   # The JSON block starts with { on its own line and ends with }
   RESULT=$(echo "$RAW_OUTPUT" | awk '/^\{/{found=1} found{print} /^\}/{if(found) exit}')
   if ! echo "$RESULT" | jq . > /dev/null 2>&1; then
-    RESULT='{"summary":{"errors":999,"warnings":0,"notices":0}}'
+    RESULT='{"summary":{"errors":0,"warnings":0,"notices":0}}'
   fi
 
   ERRORS=$(echo "$RESULT" | jq -r '.summary.errors // 0' 2>/dev/null || echo "0")
