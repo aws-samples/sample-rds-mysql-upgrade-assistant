@@ -15,6 +15,7 @@ concurrency: 3
 precheck_phase2: false
 cleanup_blue_after_switchover: true
 validate_green: true          # Run infra validation on green environment before switchover
+auto_switchover: true         # Set to false to stop after green is ready (warm up period for EBS lazy loading)
 
 instances:
   - instance_id: "prod-db-01"

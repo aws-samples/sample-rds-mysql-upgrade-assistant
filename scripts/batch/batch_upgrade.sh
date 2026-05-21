@@ -62,11 +62,13 @@ parse_config() {
   PRECHECK_PHASE2=$(grep '^precheck_phase2:' "$config" | awk '{print $2}')
   CLEANUP_BLUE=$(grep '^cleanup_blue_after_switchover:' "$config" | awk '{print $2}')
   VALIDATE_GREEN=$(grep '^validate_green:' "$config" | awk '{print $2}')
+  AUTO_SWITCHOVER=$(grep '^auto_switchover:' "$config" | awk '{print $2}')
 
   [[ -n "$CONFIG_CONCURRENCY" ]] && CONCURRENCY="${CONCURRENCY:-$CONFIG_CONCURRENCY}"
   PRECHECK_PHASE2="${PRECHECK_PHASE2:-false}"
   CLEANUP_BLUE="${CLEANUP_BLUE:-true}"
   VALIDATE_GREEN="${VALIDATE_GREEN:-true}"
+  AUTO_SWITCHOVER="${AUTO_SWITCHOVER:-true}"
 
   # Extract instances (simple line-by-line parsing)
   INSTANCE_IDS=()
@@ -505,6 +507,15 @@ upgrade_blue_green() {
     return
   fi
   log_info "$id: Pre-switchover check passed"
+
+  # Gate: auto_switchover=false stops here (user will resume later)
+  if [[ "$AUTO_SWITCHOVER" == "false" ]]; then
+    log_info "$id: auto_switchover=false. Stopping before switchover."
+    log_info "$id: Green environment is ready. Deployment: $DEPLOYMENT_ID"
+    log_info "$id: When ready, resume with: --resume (or manually run switchover)"
+    set_status "$id" "PENDING_SWITCHOVER" "Awaiting manual switchover: $DEPLOYMENT_ID"
+    return
+  fi
 
   log_step "Step 7: Executing switchover"
   "$SCRIPT_DIR/upgrade/switchover_blue_green.sh" --deployment-id "$DEPLOYMENT_ID" ${REGION:+--region "$REGION"} || {
