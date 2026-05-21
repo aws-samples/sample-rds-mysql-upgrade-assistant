@@ -208,18 +208,26 @@ init_state() {
     '{batch_id: $id, started_at: (now | strftime("%Y-%m-%dT%H:%M:%SZ")), instances: $inst}' > "$STATE_FILE"
 }
 
-get_status() { jq -r --arg id "$1" '.instances[$id].status' "$STATE_FILE"; }
+get_status() {
+  (
+    flock -s 200
+    jq -r --arg id "$1" '.instances[$id].status' "$STATE_FILE"
+  ) 200>"${STATE_FILE}.lock"
+}
 
 set_status() {
   local id="$1" status="$2" extra="${3:-}"
-  local tmp=$(mktemp)
-  if [[ -n "$extra" ]]; then
-    jq --arg id "$id" --arg s "$status" --arg e "$extra" \
-      '.instances[$id].status = $s | .instances[$id].detail = $e' "$STATE_FILE" > "$tmp"
-  else
-    jq --arg id "$id" --arg s "$status" '.instances[$id].status = $s' "$STATE_FILE" > "$tmp"
-  fi
-  mv "$tmp" "$STATE_FILE"
+  (
+    flock -x 200
+    local tmp=$(mktemp)
+    if [[ -n "$extra" ]]; then
+      jq --arg id "$id" --arg s "$status" --arg e "$extra" \
+        '.instances[$id].status = $s | .instances[$id].detail = $e' "$STATE_FILE" > "$tmp"
+    else
+      jq --arg id "$id" --arg s "$status" '.instances[$id].status = $s' "$STATE_FILE" > "$tmp"
+    fi
+    mv "$tmp" "$STATE_FILE"
+  ) 200>"${STATE_FILE}.lock"
 }
 
 if [[ "$RESUME" != "true" || ! -f "$STATE_FILE" ]]; then
@@ -764,7 +772,7 @@ wait
 ELAPSED=$(( $(date +%s) - START_TIME ))
 
 # --- Cleanup temp files ---
-rm -f "$PARAM_GROUP_MAP_FILE" "$OPTION_GROUP_MAP_FILE" "$UPGRADED_CLUSTERS_FILE" 2>/dev/null
+rm -f "$PARAM_GROUP_MAP_FILE" "$OPTION_GROUP_MAP_FILE" "$UPGRADED_CLUSTERS_FILE" "${STATE_FILE}.lock" 2>/dev/null
 
 # --- Summary ---
 COMPLETED=$(jq '[.instances[] | select(.status == "COMPLETED")] | length' "$STATE_FILE")
