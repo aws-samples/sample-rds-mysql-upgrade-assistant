@@ -11,7 +11,7 @@
 
 target_version: "8.4.0"
 target_param_family: "mysql8.4"
-concurrency: 3
+concurrency: 5
 precheck_phase2: false
 cleanup_blue_after_switchover: true
 validate_green: true          # Run infra validation on green environment before switchover
