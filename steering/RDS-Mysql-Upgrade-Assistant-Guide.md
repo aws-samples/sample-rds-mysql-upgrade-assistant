@@ -56,9 +56,24 @@ Requires `uv` — install via `curl -LsSf https://astral.sh/uv/install.sh | sh` 
 Always use `--secret-id` with AWS Secrets Manager for authentication. If the user does not have a secret configured, guide them to create one:
 
 ```bash
-aws secretsmanager create-secret --name prod/db01/creds \
+# Create a shared secret for all instances (Other type of secret)
+aws secretsmanager create-secret --name rds/shared/admin \
   --secret-string '{"username":"admin","password":"<password>"}'
 ```
+
+**Important**: The secret value must be valid JSON with `username` and `password` as top-level keys:
+```json
+{"username":"admin","password":"your_secure_password"}
+```
+
+Common mistake — do NOT use escaped quotes or nested structure:
+```json
+{"\"username\":\"admin\"":"\"password\":\"xxx\""}   ← WRONG
+```
+
+**Secret types in AWS Console:**
+- **Credentials for Amazon RDS database** — ties to a specific instance, supports auto-rotation
+- **Other type of secret** — flexible, can be shared across all instances with the same credentials (recommended for batch operations with shared admin password)
 
 For one-off operations without Secrets Manager, suggest running the shell script directly in a terminal (which supports interactive password prompts):
 
