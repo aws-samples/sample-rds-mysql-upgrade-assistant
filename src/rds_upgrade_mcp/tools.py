@@ -35,12 +35,16 @@ def register_tools(mcp):
         host: str,
         user: str,
         secret_id: str = "",
+        password: str = "",
         phase2: bool = False,
     ) -> dict:
-        """Run MySQL 8.0→8.4 precheck. Returns findings summary as JSON."""
+        """Run MySQL 8.0→8.4 precheck. Returns findings summary as JSON.
+        Credential priority: secret_id > password. One must be provided."""
         args = ["-h", host, "-u", user, "--json"]
         if secret_id:
             args += ["--secret-id", secret_id]
+        elif password:
+            args += ["-p", password]
         if phase2:
             args.append("--phase2")
         return _run("precheck/mysql_precheck_run.sh", args, timeout=600)
