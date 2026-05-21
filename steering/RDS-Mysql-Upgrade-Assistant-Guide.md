@@ -49,6 +49,24 @@ Requires `uv` — install via `curl -LsSf https://astral.sh/uv/install.sh | sh` 
 - "Create Blue/Green deployment for mysql8 upgrading to 8.4"
 - "Batch upgrade with config examples/batch_config.yaml --dry-run"
 
+### Credential Security
+
+> ⚠️ **Never ask users to type passwords in Kiro chat.** Chat input is visible in the conversation history and cannot be masked.
+
+Always use `--secret-id` with AWS Secrets Manager for authentication. If the user does not have a secret configured, guide them to create one:
+
+```bash
+aws secretsmanager create-secret --name prod/db01/creds \
+  --secret-string '{"username":"admin","password":"<password>"}'
+```
+
+For one-off operations without Secrets Manager, suggest running the shell script directly in a terminal (which supports interactive password prompts):
+
+```bash
+./scripts/precheck/mysql_precheck_run.sh -h <endpoint> -u admin
+# Password will be prompted securely (hidden input)
+```
+
 ---
 
 ## Supported Upgrade Paths
