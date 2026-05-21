@@ -61,10 +61,12 @@ parse_config() {
   CONFIG_CONCURRENCY=$(grep '^concurrency:' "$config" | awk '{print $2}')
   PRECHECK_PHASE2=$(grep '^precheck_phase2:' "$config" | awk '{print $2}')
   CLEANUP_BLUE=$(grep '^cleanup_blue_after_switchover:' "$config" | awk '{print $2}')
+  VALIDATE_GREEN=$(grep '^validate_green:' "$config" | awk '{print $2}')
 
   [[ -n "$CONFIG_CONCURRENCY" ]] && CONCURRENCY="${CONCURRENCY:-$CONFIG_CONCURRENCY}"
   PRECHECK_PHASE2="${PRECHECK_PHASE2:-false}"
   CLEANUP_BLUE="${CLEANUP_BLUE:-true}"
+  VALIDATE_GREEN="${VALIDATE_GREEN:-true}"
 
   # Extract instances (simple line-by-line parsing)
   INSTANCE_IDS=()
@@ -451,29 +453,33 @@ upgrade_blue_green() {
     return
   }
 
-  # Step 5: Validate green environment
-  log_step "Step 5: Validating green environment"
-  local green_id="${id}-green-*"
-  # Get green instance endpoint from deployment
-  local green_endpoint
-  green_endpoint=$(aws rds describe-blue-green-deployments ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
-    --blue-green-deployment-identifier "$DEPLOYMENT_ID" \
-    --query 'BlueGreenDeployments[0].SwitchoverDetails[?TargetMember!=null] | [0].TargetMember' \
-    --output text 2>/dev/null || echo "")
+  # Step 5: Validate green environment (optional)
+  if [[ "$VALIDATE_GREEN" == "true" ]]; then
+    log_step "Step 5: Validating green environment"
+    local green_id="${id}-green-*"
+    # Get green instance endpoint from deployment
+    local green_endpoint
+    green_endpoint=$(aws rds describe-blue-green-deployments ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+      --blue-green-deployment-identifier "$DEPLOYMENT_ID" \
+      --query 'BlueGreenDeployments[0].SwitchoverDetails[?TargetMember!=null] | [0].TargetMember' \
+      --output text 2>/dev/null || echo "")
 
-  if [[ -n "$green_endpoint" && "$green_endpoint" != "None" ]]; then
-    # Extract green instance ID from ARN
-    local green_instance_id
-    green_instance_id=$(echo "$green_endpoint" | grep -o '[^:]*$')
-    log_info "$id: Green instance: $green_instance_id"
+    if [[ -n "$green_endpoint" && "$green_endpoint" != "None" ]]; then
+      # Extract green instance ID from ARN
+      local green_instance_id
+      green_instance_id=$(echo "$green_endpoint" | grep -o '[^:]*$')
+      log_info "$id: Green instance: $green_instance_id"
 
-    # Run infra validation on green
-    "$SCRIPT_DIR/validate/post_upgrade_validate.sh" --instance-id "$green_instance_id" \
-      ${REGION:+--region "$REGION"} --expected-version "$TARGET_VERSION" || {
-      log_warn "$id: Green environment validation had issues (non-blocking)"
-    }
+      # Run infra validation on green
+      "$SCRIPT_DIR/validate/post_upgrade_validate.sh" --instance-id "$green_instance_id" \
+        ${REGION:+--region "$REGION"} --expected-version "$TARGET_VERSION" || {
+        log_warn "$id: Green environment validation had issues (non-blocking)"
+      }
+    else
+      log_warn "$id: Could not determine green instance. Skipping green validation."
+    fi
   else
-    log_warn "$id: Could not determine green instance. Skipping green validation."
+    log_info "$id: Skipping green validation (validate_green=false)"
   fi
 
   # Step 6: Pre-switchover readiness check
