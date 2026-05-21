@@ -103,17 +103,29 @@ fi
 
 DEPLOYMENT_NAME="bgd-${INSTANCE_ID}-$(date +%Y%m%d%H%M%S)"
 
+# Detect if we need two-step upgrade (custom option group + major version)
+# RDS doesn't support custom option groups with major version upgrade in a single B/G creation
+TWO_STEP=false
+if [[ -n "$TARGET_OPTION_GROUP" ]]; then
+  TWO_STEP=true
+  echo "Custom option group detected. Using two-step B/G: create same-version → upgrade green." >&2
+fi
+
 BG_ARGS=(
   ${REGION_ARGS[@]+"${REGION_ARGS[@]}"}
   --blue-green-deployment-name "$DEPLOYMENT_NAME"
   --source "$SOURCE_ARN"
-  --target-engine-version "$TARGET_VERSION"
 )
 
+# Only include target engine version if NOT two-step (no custom option group)
+if [[ "$TWO_STEP" == "false" ]]; then
+  BG_ARGS+=(--target-engine-version "$TARGET_VERSION")
+fi
+
 if [[ "$IS_CLUSTER" == "true" ]]; then
-  [[ -n "$TARGET_PARAM_GROUP" ]] && BG_ARGS+=(--target-db-cluster-parameter-group-name "$TARGET_PARAM_GROUP")
+  [[ -n "$TARGET_PARAM_GROUP" && "$TWO_STEP" == "false" ]] && BG_ARGS+=(--target-db-cluster-parameter-group-name "$TARGET_PARAM_GROUP")
 else
-  [[ -n "$TARGET_PARAM_GROUP" ]] && BG_ARGS+=(--target-db-parameter-group-name "$TARGET_PARAM_GROUP")
+  [[ -n "$TARGET_PARAM_GROUP" && "$TWO_STEP" == "false" ]] && BG_ARGS+=(--target-db-parameter-group-name "$TARGET_PARAM_GROUP")
   if [[ -n "$TARGET_OPTION_GROUP" ]]; then
     BG_ARGS+=(--target-db-instance-option-group-name "$TARGET_OPTION_GROUP")
   fi
@@ -125,10 +137,14 @@ RESULT=$(aws rds create-blue-green-deployment \
 
 if [[ $? -ne 0 ]]; then
   echo "ERROR: Failed to create Blue/Green deployment. Check instance eligibility and IAM permissions." >&2
+  echo "$RESULT" >&2
   exit 1
 fi
 
-echo "$RESULT" | jq '{
+DEPLOYMENT_ID=$(echo "$RESULT" | jq -r '.BlueGreenDeployment.BlueGreenDeploymentIdentifier')
+
+# Two-step: output includes upgrade_green_required flag
+echo "$RESULT" | jq --arg two_step "$TWO_STEP" '{
   deployment_id: .BlueGreenDeployment.BlueGreenDeploymentIdentifier,
   deployment_name: .BlueGreenDeployment.BlueGreenDeploymentName,
   status: .BlueGreenDeployment.Status,
@@ -136,5 +152,6 @@ echo "$RESULT" | jq '{
   target_version: "'"$TARGET_VERSION"'",
   target_param_group: "'"$TARGET_PARAM_GROUP"'",
   target_option_group: "'"${TARGET_OPTION_GROUP:-none}"'",
+  upgrade_green_required: ($two_step == "true"),
   created_at: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
 }'
