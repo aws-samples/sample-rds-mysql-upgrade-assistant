@@ -128,7 +128,7 @@ sudo apt install jq
 
 ```bash
 git clone https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant.git
-cd Rds-Mysql-Upgrade-Assistant
+cd sample-rds-mysql-upgrade-assistant
 ```
 
 ### 1. 探索 MySQL 8.0 執行個體

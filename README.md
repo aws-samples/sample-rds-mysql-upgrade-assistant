@@ -14,7 +14,7 @@ Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 → 8.4.
                ▼                          │
 ┌──────────────────────────┐              │
 │   MCP Server (FastMCP)   │              │
-│   13 tools / stdio       │              │
+│   15 tools / stdio       │              │
 │   thin subprocess wrapper│              │
 └──────────┬───────────────┘              │
            │                              │
@@ -136,7 +136,7 @@ sudo apt install jq
 
 ```bash
 git clone https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant.git
-cd Rds-Mysql-Upgrade-Assistant
+cd sample-rds-mysql-upgrade-assistant
 ```
 
 ### 1. Discover MySQL 8.0 instances
