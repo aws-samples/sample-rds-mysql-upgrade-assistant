@@ -25,11 +25,11 @@ RDS MySQL Upgrade Assistant 采用 shell 优先的方法：bash 脚本使用 AWS
 
 解决方案由四个组件组成：
 
-1. **Shell 脚本** — 十五个 bash 脚本加上两个安全库涵盖实例探索、兼容性 precheck、参数迁移、Blue/Green 部署生命周期、就地升级、升级后验证和批次编排。所有脚本使用 AWS CLI 进行 RDS 操作，使用 `mysql` 客户端进行数据库连接。
+1. **Shell 脚本** : 十五个 bash 脚本加上两个安全库涵盖实例探索、兼容性 precheck、参数迁移、Blue/Green 部署生命周期、就地升级、升级后验证和批次编排。所有脚本使用 AWS CLI 进行 RDS 操作，使用 `mysql` 客户端进行数据库连接。
 
-2. **SQL precheck 引擎** — 一个纯 SQL 脚本，对 MySQL 8.0 实例执行 19 项兼容性检查，检测可能导致升级失败的问题。这些检查涵盖 MySQL Shell 的升级检查器逻辑以及额外的 RDS 特定检查，全部可从任何标准 MySQL 客户端执行。
+2. **SQL precheck 引擎** : 一个纯 SQL 脚本，对 MySQL 8.0 实例执行 19 项兼容性检查，检测可能导致升级失败的问题。这些检查涵盖 MySQL Shell 的升级检查器逻辑以及额外的 RDS 特定检查，全部可从任何标准 MySQL 客户端执行。
 
-3. **MCP 服务器** — 使用 FastMCP 构建的轻量 Python 服务器，公开十五个工具，每个工具包装一个 shell 脚本。这使 Kiro 能够通过自然语言命令调用这些脚本。
+3. **MCP 服务器** : 使用 FastMCP 构建的轻量 Python 服务器，公开十五个工具，每个工具包装一个 shell 脚本。这使 Kiro 能够通过自然语言命令调用这些脚本。
 
 4. **Kiro steering 文件** — 包含 MySQL 8.0→8.4 升级最佳实践、已知问题和修复模式的知识文档，Kiro 在交互式会话中参考此文档。
 
@@ -41,8 +41,9 @@ RDS MySQL Upgrade Assistant 采用 shell 优先的方法：bash 脚本使用 AWS
 
 ### 升级工作流程
 
-对于每个实例，工具遵循十步骤工作流程：
+对于每个实例，工具遵循九步骤工作流程：
 
+*[工作流程图预留位置 — 使用 AWS Architecture Icons 创建，显示九步骤序列]*
 
 1. **探索** — 使用 AWS CLI 搭配可选的标签筛选找到所有 MySQL 8.0 实例
 2. **Precheck** — 对来源实例执行 19 项基于 SQL 的兼容性检查
@@ -105,6 +106,7 @@ precheck 引擎帮助在承诺升级*之前*识别兼容性问题。它以纯 SQ
 
 - **可配置的并行度** — 并行处理 N 个实例（建议：Blue/Green 为 3–5 个，就地升级为 1 个）
 - **策略选择** — 每个实例选择 Blue/Green（建议用于生产环境）或就地升级（用于非生产环境）
+- **Multi-AZ DB Cluster 自动检测** — 自动检测集群成员，强制使用就地升级策略（Blue/Green 不支持），以集群级别执行升级，并跳过重复成员
 - **自动 precheck 门控** — 具有 ERROR 级别发现的实例会自动跳过
 - **状态文件持久化** — 恢复中断的批次而不重新处理已完成的实例
 - **故障隔离** — 失败的实例不会阻挡其余升级
@@ -126,7 +128,7 @@ precheck 引擎帮助在承诺升级*之前*识别兼容性问题。它以纯 SQ
 
 ```bash
 git clone https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant.git
-cd sample-rds-mysql-upgrade-assistant
+cd Rds-Mysql-Upgrade-Assistant
 ```
 
 ### 安装 Kiro
@@ -325,7 +327,7 @@ Failed instances:
 - **暂时保留蓝色环境。** switchover 后，保留旧的蓝色实例 24–48 小时。要回退至 MySQL 8.0：删除 B/G 部署（保留旧实例），重新命名绿色实例，然后将蓝色实例重新命名回原始名称。**重要：rename 回退会还原至 switchover 时的蓝色实例状态——switchover 后写入的任何数据都会丢失。PITR 无法降级引擎版本。目前没有零数据丢失且同时回退版本的全自动化路径。** 回退前请仔细评估取舍。
 - **监控参数组变更。** 仔细查看 `migrate_param_group.sh` 报告。某些参数在 MySQL 8.4 中的默认值已变更（例如 `innodb_adaptive_hash_index` 默认为 OFF），可能影响工作负载性能。
 - **关于 `mysql_native_password` 的说明。** RDS MySQL 8.4 使用 `caching_sha2_password` 作为默认验证插件。`mysql_native_password` 插件在 8.4 中仍然可用，但已弃用且将在未来版本中移除。升级后，使用 `mysql_native_password` 的现有账户将继续运作。要变更默认验证插件，请创建自定义参数组并修改 `authentication_policy` 参数。长期而言，计划将账户迁移至 `caching_sha2_password`。
-- **谨慎管理并行度。** 对于 Blue/Green 部署，3–5 个并行升级是合理的起点——绿色环境独立构建，生产环境（蓝色）在 switchover 前不受影响。对于就地升级，建议使用并行度 1（串行），因为每次升级都会造成目标实例停机；同时执行多个就地升级意味着多个数据库同时不可用。对于可接受停机的非生产环境就地升级，并行度 2–3 是可以的。
+- **谨慎管理并行度。** 对于 Blue/Green 部署，3–5 个并行升级是合理的起点——绿色环境独立构建，生产环境（蓝色）在 switchover 前不受影响。对于就地升级，并行度取决于停机容忍度：同时执行多个就地升级意味着多个数据库同时不可用。对于可接受并发停机的非生产环境，并行度 3–5 可显著缩短总升级时间。对于生产环境的就地升级（例如不支持 Blue/Green 的 Multi-AZ DB Cluster），建议串行执行（并行度 1）或安排在维护窗口期间。
 
 ## 解决困难部分：修复和应用程序验证
 
