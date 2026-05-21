@@ -451,7 +451,33 @@ upgrade_blue_green() {
     return
   }
 
-  log_step "Step 5: Pre-switchover readiness check"
+  # Step 5: Validate green environment
+  log_step "Step 5: Validating green environment"
+  local green_id="${id}-green-*"
+  # Get green instance endpoint from deployment
+  local green_endpoint
+  green_endpoint=$(aws rds describe-blue-green-deployments ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+    --blue-green-deployment-identifier "$DEPLOYMENT_ID" \
+    --query 'BlueGreenDeployments[0].SwitchoverDetails[?TargetMember!=null] | [0].TargetMember' \
+    --output text 2>/dev/null || echo "")
+
+  if [[ -n "$green_endpoint" && "$green_endpoint" != "None" ]]; then
+    # Extract green instance ID from ARN
+    local green_instance_id
+    green_instance_id=$(echo "$green_endpoint" | grep -o '[^:]*$')
+    log_info "$id: Green instance: $green_instance_id"
+
+    # Run infra validation on green
+    "$SCRIPT_DIR/validate/post_upgrade_validate.sh" --instance-id "$green_instance_id" \
+      ${REGION:+--region "$REGION"} --expected-version "$TARGET_VERSION" || {
+      log_warn "$id: Green environment validation had issues (non-blocking)"
+    }
+  else
+    log_warn "$id: Could not determine green instance. Skipping green validation."
+  fi
+
+  # Step 6: Pre-switchover readiness check
+  log_step "Step 6: Pre-switchover readiness check"
   PRE_SW_RESULT=$("$SCRIPT_DIR/upgrade/pre_switchover_check.sh" --deployment-id "$DEPLOYMENT_ID" ${REGION:+--region "$REGION"} --json 2>/dev/null) || true
   PRE_SW_OVERALL=$(echo "$PRE_SW_RESULT" | jq -r '.overall // "UNKNOWN"' 2>/dev/null)
 
@@ -474,22 +500,22 @@ upgrade_blue_green() {
   fi
   log_info "$id: Pre-switchover check passed"
 
-  log_step "Step 6: Executing switchover"
+  log_step "Step 7: Executing switchover"
   "$SCRIPT_DIR/upgrade/switchover_blue_green.sh" --deployment-id "$DEPLOYMENT_ID" ${REGION:+--region "$REGION"} || {
     log_error "$id: Switchover failed"
     set_status "$id" "FAILED" "Switchover failed"
     return
   }
 
-  # Step 7: Validate
-  log_step "Step 7: Post-upgrade validation"
+  # Step 8: Connectivity check
+  log_step "Step 8: Post-switchover connectivity check"
   "$SCRIPT_DIR/validate/post_upgrade_validate.sh" --instance-id "$id" ${REGION:+--region "$REGION"} --expected-version "$TARGET_VERSION" || {
     log_warn "$id: Validation had issues"
   }
 
-  # Step 8: Cleanup
+  # Step 9: Cleanup
   if [[ "$CLEANUP_BLUE" == "true" ]]; then
-    log_step "Step 8: Cleaning up Blue/Green deployment"
+    log_step "Step 9: Cleaning up Blue/Green deployment"
     "$SCRIPT_DIR/upgrade/cleanup_blue_green.sh" --deployment-id "$DEPLOYMENT_ID" ${REGION:+--region "$REGION"} --delete-source || {
       log_warn "$id: Cleanup failed (non-critical)"
     }
