@@ -8,7 +8,7 @@
 #
 # Usage:
 #   ./create_blue_green.sh --instance-id <id> --target-version <ver>
-#                          --target-param-group <group> [--target-option-group <group>]
+#                          [--target-param-group <group>] [--target-option-group <group>]
 #                          [--region <region>]
 # ============================================================
 
@@ -42,8 +42,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$INSTANCE_ID" || -z "$TARGET_VERSION" || -z "$TARGET_PARAM_GROUP" ]]; then
-  echo "Usage: $0 --instance-id <id> --target-version <ver> --target-param-group <group> [--target-option-group <group>] [--region <region>]"
+if [[ -z "$INSTANCE_ID" || -z "$TARGET_VERSION" ]]; then
+  echo "Usage: $0 --instance-id <id> --target-version <ver> [--target-param-group <group>] [--target-option-group <group>] [--region <region>]"
   exit 1
 fi
 
@@ -111,9 +111,9 @@ BG_ARGS=(
 )
 
 if [[ "$IS_CLUSTER" == "true" ]]; then
-  BG_ARGS+=(--target-db-cluster-parameter-group-name "$TARGET_PARAM_GROUP")
+  [[ -n "$TARGET_PARAM_GROUP" ]] && BG_ARGS+=(--target-db-cluster-parameter-group-name "$TARGET_PARAM_GROUP")
 else
-  BG_ARGS+=(--target-db-parameter-group-name "$TARGET_PARAM_GROUP")
+  [[ -n "$TARGET_PARAM_GROUP" ]] && BG_ARGS+=(--target-db-parameter-group-name "$TARGET_PARAM_GROUP")
   if [[ -n "$TARGET_OPTION_GROUP" ]]; then
     BG_ARGS+=(--target-db-instance-option-group-name "$TARGET_OPTION_GROUP")
   fi
