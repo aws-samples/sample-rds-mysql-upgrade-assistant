@@ -249,7 +249,7 @@ def register_tools(mcp):
     @mcp.tool()
     async def in_place_upgrade(
         instance_id: str,
-        target_version: str = "8.4.8",
+        target_version: str = "8.4.9",
         target_param_group: str = "",
         target_option_group: str = "",
         apply_immediately: bool = True,

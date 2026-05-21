@@ -16,7 +16,7 @@
 --              Based on MySQL Shell util.checkForServerUpgrade()
 --              checks, adapted for standard mysql client execution.
 --
--- Scope:       Source 8.0.28 – 8.0.x → Target 8.4.8
+-- Scope:       Source 8.0.28 – 8.0.x → Target 8.4.9
 --
 -- Usage:       See README.md for two-phase execution
 --
@@ -32,7 +32,7 @@
 -- ------------------------------------------------------------
 
 SET @source_version = @@version;
-SET @target_version = '8.4.8';
+SET @target_version = '8.4.9';
 
 SET @source_major = CAST(SUBSTRING_INDEX(@source_version, '.', 1) AS UNSIGNED);
 SET @source_minor = CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(@source_version, '.', 2), '.', -1) AS UNSIGNED);

@@ -88,7 +88,7 @@ For one-off operations without Secrets Manager, suggest running the shell script
 
 - MySQL 8.0.28+ → 8.4.x (major version upgrade)
 - Source must be 8.0.28 or later for full precheck coverage
-- Target: MySQL 8.4.8 (current RDS latest)
+- Target: MySQL 8.4.9 (current RDS latest)
 
 ## Upgrade Strategies
 

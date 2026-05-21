@@ -10,7 +10,7 @@ Automate the full batch upgrade workflow from discovery to completion.
 
 ## Inputs
 - `region` (optional) — AWS region (default: AWS CLI configured region)
-- `target_version` — Target MySQL version (default: 8.4.8)
+- `target_version` — Target MySQL version (default: 8.4.9)
 - `secret_prefix` (optional) — Secrets Manager prefix for credentials
 - `concurrency` — Number of parallel upgrades (default: 3)
 

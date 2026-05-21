@@ -11,7 +11,7 @@ Execute the full upgrade workflow for a single RDS MySQL instance.
 ## Inputs
 - `instance_id` — The RDS instance or cluster identifier
 - `secret_id` (optional) — Secrets Manager secret for MySQL credentials
-- `target_version` — Target MySQL version (default: 8.4.8)
+- `target_version` — Target MySQL version (default: 8.4.9)
 
 ## Steps
 
@@ -57,16 +57,26 @@ bash scripts/upgrade/create_blue_green.sh \
 bash scripts/upgrade/monitor_blue_green.sh \
   --deployment-id <deployment_id> --poll-interval 60
 
+# Validate green environment (infra + app)
+bash scripts/validate/post_upgrade_validate.sh \
+  --instance-id <green_instance_id> --expected-version <target_version> --json
+bash scripts/validate/app_validate_run.sh \
+  -h <green_endpoint> -u <user> --secret-id <secret_id> --json
+
 # Pre-switchover readiness check
 bash scripts/upgrade/pre_switchover_check.sh \
   --deployment-id <deployment_id> --json
 ```
-Only proceed with switchover if overall is PASS.
+Only proceed with switchover if both validation and pre-switchover check pass.
 
 ```bash
 # Execute switchover
 bash scripts/upgrade/switchover_blue_green.sh \
   --deployment-id <deployment_id>
+
+# Connectivity check after switchover
+bash scripts/validate/post_upgrade_validate.sh \
+  --instance-id <instance_id> --expected-version <target_version> --json
 ```
 
 ### Step 4b: In-Place Path
@@ -79,20 +89,14 @@ bash scripts/upgrade/in_place_upgrade.sh \
   --apply-immediately
 ```
 
-### Step 5: Infrastructure Validation
+### Step 5: Post-Upgrade Validation (In-Place Path)
 ```bash
 bash scripts/validate/post_upgrade_validate.sh \
   --instance-id <instance_id> --expected-version <target_version> --json
-```
-Report the validation results. All checks should be PASS.
-
-### Step 5b: Application Validation
-If the user has customized `scripts/validate/app_validate.sql`, run application-level checks:
-```bash
 bash scripts/validate/app_validate_run.sh \
   -h <endpoint> -u <user> --secret-id <secret_id> --json
 ```
-This automatically runs all `app_validate*.sql` files and reports results.
+Report the validation results. All checks should be PASS.
 If no custom SQL files exist, remind the user to copy and customize the template:
 ```bash
 cp scripts/validate/app_validate_template.sql scripts/validate/app_validate.sql

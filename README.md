@@ -184,7 +184,7 @@ cd sample-rds-mysql-upgrade-assistant
 
 ```bash
 ./scripts/upgrade/create_blue_green.sh \
-  --instance-id my-db --target-version 8.4.8 --target-param-group my-mysql84-params
+  --instance-id my-db --target-version 8.4.9 --target-param-group my-mysql84-params
 ```
 
 ### 5. Batch upgrade (100+ instances)

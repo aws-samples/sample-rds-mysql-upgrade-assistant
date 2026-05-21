@@ -201,9 +201,9 @@ elif [[ "$RUN_PHASE2" == "true" ]]; then
     printf "  %-24s %s\n" "TOTAL notices:" "$TOTAL_NOTICES"
     echo "============================================================"
     if [[ "$TOTAL_ERRORS" -gt 0 ]]; then
-      echo "$TOTAL_ERRORS error(s) found. Please fix them before upgrading to MySQL 8.4.8."
+      echo "$TOTAL_ERRORS error(s) found. Please fix them before upgrading to MySQL 8.4.9."
     else
-      echo "No errors found. You may proceed with the upgrade to MySQL 8.4.8."
+      echo "No errors found. You may proceed with the upgrade to MySQL 8.4.9."
     fi
     echo "============================================================"
   } > "$REPORT_OUT"
@@ -233,7 +233,7 @@ if [[ "$JSON_OUTPUT" == "true" ]]; then
   "instance": "$HOST",
   "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "source_version": "${SOURCE_VER:-unknown}",
-  "target_version": "8.4.8",
+  "target_version": "8.4.9",
   "phase1_complete": true,
   "phase2_complete": $RUN_PHASE2,
   "summary": {
