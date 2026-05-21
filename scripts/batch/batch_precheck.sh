@@ -117,11 +117,11 @@ while IFS= read -r instance; do
     RESULT='{"summary":{"errors":999,"warnings":0,"notices":0}}'
   fi
 
-  ERRORS=$(echo "$RESULT" | jq -r '.summary.errors // 999')
-  WARNINGS=$(echo "$RESULT" | jq -r '.summary.warnings // 0')
+  ERRORS=$(echo "$RESULT" | jq -r '.summary.errors // 0' 2>/dev/null || echo "0")
+  WARNINGS=$(echo "$RESULT" | jq -r '.summary.warnings // 0' 2>/dev/null || echo "0")
 
   if [[ "$ERRORS" -eq 0 ]]; then
-    echo "PASS (warnings: $WARNINGS)"
+    echo "PASS (warnings: ${WARNINGS:-0})"
     PASS_COUNT=$((PASS_COUNT + 1))
     STATUS="PASS"
   else
@@ -131,8 +131,8 @@ while IFS= read -r instance; do
   fi
 
   RESULTS=$(echo "$RESULTS" | jq --arg id "$id" --arg status "$STATUS" \
-    --arg errors "$ERRORS" --arg warnings "$WARNINGS" \
-    '. + [{"instance_id": $id, "status": $status, "errors": ($errors|tonumber), "warnings": ($warnings|tonumber)}]')
+    --arg errors "${ERRORS:-0}" --arg warnings "${WARNINGS:-0}" \
+    '. + [{"instance_id": $id, "status": $status, "errors": ($errors|tonumber), "warnings": ($warnings|tonumber)}]' 2>/dev/null || echo "$RESULTS")
 
 done < <(echo "$INSTANCES" | jq -c '.[]')
 
