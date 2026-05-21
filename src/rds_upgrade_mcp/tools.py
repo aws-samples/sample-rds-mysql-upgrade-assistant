@@ -140,18 +140,20 @@ def register_tools(mcp):
         config_path: str,
         dry_run: bool = False,
         resume: bool = False,
-        concurrency: int = 1,
+        concurrency: int = 0,
         region: str = "",
     ) -> str:
         """Run batch upgrade for multiple instances.
         Note: In-place upgrades may take 30-60 minutes per instance.
-        Use dry_run=True first to validate the plan."""
+        Use dry_run=True first to validate the plan.
+        Set concurrency=0 (default) to use the value from config file."""
         args = ["--config", config_path]
         if dry_run:
             args.append("--dry-run")
         if resume:
             args.append("--resume")
-        args += ["--concurrency", str(concurrency)]
+        if concurrency > 0:
+            args += ["--concurrency", str(concurrency)]
         if region:
             args += ["--region", region]
         result = subprocess.run(
