@@ -203,6 +203,19 @@ cd sample-rds-mysql-upgrade-assistant
 
 批次编排器也会执行运行时自动检测：如果实例属于 Multi-AZ DB Cluster，会自动覆盖策略为 `in_place`，以集群级别执行升级，并跳过同一集群的其他成员。
 
+独立批次预检（不触发升级）：
+
+```bash
+# 交互式密码（所有实例共用）
+./scripts/batch/batch_precheck.sh -u admin --region us-west-2
+
+# 使用 Secrets Manager
+./scripts/batch/batch_precheck.sh -u admin --secret-id prod/rds/creds --region us-west-2
+
+# 使用 IAM 数据库认证
+./scripts/batch/batch_precheck.sh -u iam_user --iam --region us-west-2
+```
+
 
 ## 使用 Kiro
 

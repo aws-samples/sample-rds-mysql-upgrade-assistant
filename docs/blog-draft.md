@@ -277,13 +277,23 @@ instances:
     strategy: "in_place"
 ```
 
-2. Validate with a dry run:
+2. Run batch precheck across all instances (without triggering upgrades):
+
+```bash
+# Interactive password (shared for all instances)
+./scripts/batch/batch_precheck.sh -u admin --region us-west-2
+
+# Using Secrets Manager
+./scripts/batch/batch_precheck.sh -u admin --secret-id prod/rds/creds --region us-west-2
+```
+
+3. Validate with a dry run:
 
 ```bash
 ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --dry-run
 ```
 
-3. Execute the batch upgrade:
+4. Execute the batch upgrade:
 
 ```bash
 ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --concurrency 3
@@ -306,7 +316,7 @@ Failed instances:
   prod-db-37: Blue/Green creation failed: instance not eligible
 ```
 
-4. Resume if interrupted:
+5. Resume if interrupted:
 
 ```bash
 ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --resume

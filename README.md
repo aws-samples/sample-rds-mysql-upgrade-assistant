@@ -50,6 +50,12 @@ Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 → 8.4.
 │  │ (infra check) │  │ (app check)   │  │ (orchestrator) │   │
 │  └───────────────┘  └───────────────┘  └────────────────┘   │
 │                                                             │
+│  ┌───────────────┐                                           │
+│  │ batch_        │                                           │
+│  │ precheck.sh   │                                           │
+│  │ (fleet check) │                                           │
+│  └───────────────┘                                           │
+│                                                             │
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │  lib/audit_log.sh    lib/integrity_check.sh         │    │
 │  │  (security: logging, checksums, dependency verify)  │    │
@@ -210,6 +216,19 @@ Review and edit the generated config, then run:
 ```
 
 The batch orchestrator also performs runtime auto-detection: if an instance belongs to a Multi-AZ DB Cluster, it automatically overrides the strategy to `in_place`, upgrades at the cluster level, and skips other members of the same cluster.
+
+For standalone batch precheck (without triggering upgrades):
+
+```bash
+# Interactive password (shared for all instances)
+./scripts/batch/batch_precheck.sh -u admin --region us-west-2
+
+# Using Secrets Manager
+./scripts/batch/batch_precheck.sh -u admin --secret-id prod/rds/creds --region us-west-2
+
+# Using IAM database authentication
+./scripts/batch/batch_precheck.sh -u iam_user --iam --region us-west-2
+```
 
 ## Using with Kiro
 

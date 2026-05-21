@@ -203,6 +203,19 @@ cd sample-rds-mysql-upgrade-assistant
 
 批次協調器也會執行執行時期自動偵測：如果執行個體屬於 Multi-AZ DB Cluster，會自動覆寫策略為 `in_place`，以叢集層級執行升級，並跳過同一叢集的其他成員。
 
+獨立批次預檢（不觸發升級）：
+
+```bash
+# 互動式密碼（所有執行個體共用）
+./scripts/batch/batch_precheck.sh -u admin --region us-west-2
+
+# 使用 Secrets Manager
+./scripts/batch/batch_precheck.sh -u admin --secret-id prod/rds/creds --region us-west-2
+
+# 使用 IAM 資料庫驗證
+./scripts/batch/batch_precheck.sh -u iam_user --iam --region us-west-2
+```
+
 
 ## 使用 Kiro
 
