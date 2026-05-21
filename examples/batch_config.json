@@ -1,0 +1,29 @@
+{
+  "target_version": "8.4.9",
+  "target_param_family": "mysql8.4",
+  "concurrency": 5,
+  "precheck_phase2": false,
+  "cleanup_blue_after_switchover": true,
+  "validate_green": true,
+  "auto_switchover": true,
+  "instances": [
+    {
+      "instance_id": "prod-db-01",
+      "secret_id": "prod/db01/credentials",
+      "source_param_group": "prod-mysql80-custom",
+      "strategy": "blue_green"
+    },
+    {
+      "instance_id": "prod-db-02",
+      "secret_id": "prod/db02/credentials",
+      "source_param_group": "prod-mysql80-custom",
+      "strategy": "blue_green"
+    },
+    {
+      "instance_id": "staging-db-01",
+      "secret_id": "staging/db01/credentials",
+      "source_param_group": "staging-mysql80",
+      "strategy": "in_place"
+    }
+  ]
+}

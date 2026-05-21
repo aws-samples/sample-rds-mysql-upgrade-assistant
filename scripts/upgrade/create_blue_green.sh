@@ -131,11 +131,9 @@ else
   fi
 fi
 
-RESULT=$(aws rds create-blue-green-deployment \
+if ! RESULT=$(aws rds create-blue-green-deployment \
   "${BG_ARGS[@]}" \
-  --output json 2>&1)
-
-if [[ $? -ne 0 ]]; then
+  --output json 2>&1); then
   echo "ERROR: Failed to create Blue/Green deployment. Check instance eligibility and IAM permissions." >&2
   echo "$RESULT" >&2
   exit 1

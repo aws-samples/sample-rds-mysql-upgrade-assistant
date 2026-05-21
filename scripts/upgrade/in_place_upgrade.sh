@@ -144,9 +144,7 @@ if [[ "$IS_CLUSTER" == "true" ]]; then
 
   echo "Initiating in-place upgrade for cluster $INSTANCE_ID to $TARGET_VERSION..." >&2
 
-  RESULT=$(aws rds modify-db-cluster "${MODIFY_ARGS[@]}" --output json 2>&1)
-
-  if [[ $? -ne 0 ]]; then
+  if ! RESULT=$(aws rds modify-db-cluster "${MODIFY_ARGS[@]}" --output json 2>&1); then
     echo "ERROR: Cluster upgrade failed. Check status and IAM permissions." >&2
     exit 1
   fi
@@ -312,9 +310,7 @@ fi
 
 echo "Initiating in-place upgrade for $INSTANCE_ID to $TARGET_VERSION..." >&2
 
-RESULT=$(aws rds modify-db-instance "${MODIFY_ARGS[@]}" --output json 2>&1)
-
-if [[ $? -ne 0 ]]; then
+if ! RESULT=$(aws rds modify-db-instance "${MODIFY_ARGS[@]}" --output json 2>&1); then
   echo "ERROR: Upgrade failed. Check instance status and IAM permissions." >&2
   exit 1
 fi
