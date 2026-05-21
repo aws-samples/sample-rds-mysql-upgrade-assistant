@@ -122,7 +122,7 @@ REGION_ARGS=()
 # --- State file ---
 STATE_DIR="$(dirname "$CONFIG_PATH")"
 STATE_FILE="${STATE_DIR}/batch_state_$(date +%Y%m%d_%H%M%S).json"
-REPORT_DIR="${STATE_DIR}/batch_reports"
+REPORT_DIR="${STATE_DIR}/logs"
 mkdir -p "$REPORT_DIR"
 
 if [[ "$RESUME" == "true" ]]; then
