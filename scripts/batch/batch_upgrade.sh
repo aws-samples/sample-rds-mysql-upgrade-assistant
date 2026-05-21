@@ -443,7 +443,11 @@ upgrade_blue_green() {
 
     BG_RESULT=$("$SCRIPT_DIR/upgrade/create_blue_green.sh" "${bg_args[@]}" 2>&1) || {
       log_error "$id: Blue/Green creation failed: $BG_RESULT"
-      set_status "$id" "FAILED" "B/G creation failed"
+      log_warn  "$id: Consider using in-place upgrade instead (causes downtime):"
+      log_warn  "  ./scripts/upgrade/in_place_upgrade.sh --instance-id $id --target-version $TARGET_VERSION --apply-immediately"
+      log_warn  "$id: Common reasons: cascading replicas, CloudFormation-managed, or unsupported configuration."
+      log_warn  "$id: See: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments.html#blue-green-deployments-limitations"
+      set_status "$id" "FAILED" "B/G creation failed — consider in-place upgrade"
       return
     }
 
