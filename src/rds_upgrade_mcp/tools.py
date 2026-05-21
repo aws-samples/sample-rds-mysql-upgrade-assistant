@@ -1,4 +1,10 @@
-"""MCP tools — thin wrappers around shell scripts."""
+"""MCP tools — thin wrappers around shell scripts.
+
+Note on async: These tools use synchronous subprocess.run() which blocks the
+event loop. This is acceptable for stdio-based MCP transport with a single
+caller (Kiro). If migrating to SSE/HTTP transport, replace with
+asyncio.create_subprocess_exec for proper concurrency.
+"""
 
 import json
 import subprocess
@@ -160,7 +166,9 @@ def register_tools(mcp):
             ["bash", str(SCRIPTS_DIR / "batch/batch_upgrade.sh")] + args,
             capture_output=True, text=True, timeout=86400,
         )
-        return result.stdout + (f"\nSTDERR: {result.stderr}" if result.returncode != 0 else "")
+        if result.returncode != 0:
+            raise RuntimeError(f"batch_upgrade.sh failed (exit {result.returncode}):\n{result.stdout}\n{result.stderr}")
+        return result.stdout
 
     @mcp.tool()
     async def generate_config(
