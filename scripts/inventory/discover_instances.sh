@@ -66,6 +66,7 @@ RESULT=$(echo "$RAW" | jq --arg prefix "$VERSION_PREFIX" --arg region "$EFFECTIV
        engine_version: .EngineVersion,
        instance_class: .DBInstanceClass,
        multi_az: .MultiAZ,
+       cluster_id: (.DBClusterIdentifier // null),
        parameter_group: (.DBParameterGroups[0].DBParameterGroupName // ""),
        endpoint: (.Endpoint.Address // ""),
        port: (.Endpoint.Port // 3306),
@@ -99,8 +100,8 @@ else
 
   if [[ "$COUNT" -gt 0 ]]; then
     echo "$RESULT" | jq -r '
-      ["INSTANCE_ID", "VERSION", "CLASS", "MULTI_AZ", "STATUS", "PARAM_GROUP"],
-      (.[] | [.instance_id, .engine_version, .instance_class, (.multi_az|tostring), .status, .parameter_group])
+      ["INSTANCE_ID", "VERSION", "CLASS", "MULTI_AZ", "CLUSTER", "STATUS", "PARAM_GROUP"],
+      (.[] | [.instance_id, .engine_version, .instance_class, (.multi_az|tostring), (.cluster_id // "-"), .status, .parameter_group])
       | @tsv' | column -t
   else
     echo "No MySQL instances matching version prefix '$VERSION_PREFIX' found."

@@ -161,6 +161,9 @@ fi
 PARAM_GROUP_MAP_FILE=$(mktemp /tmp/pg_map_XXXXXX)
 MIGRATED_GROUPS=()
 
+# --- Cluster dedup (skip duplicate cluster members) ---
+UPGRADED_CLUSTERS_FILE=$(mktemp /tmp/cluster_done_XXXXXX)
+
 migrate_param_group_once() {
   local source_pg="$1"
   if [[ -z "$source_pg" ]]; then return; fi
@@ -247,6 +250,31 @@ upgrade_instance() {
   local secret="${INSTANCE_SECRETS[$idx]}"
   local source_pg="${INSTANCE_PARAM_GROUPS[$idx]}"
   local strategy="${INSTANCE_STRATEGIES[$idx]}"
+
+  # Auto-detect Multi-AZ DB Cluster — force in_place (Blue/Green not supported)
+  local cluster_id
+  cluster_id=$(aws rds describe-db-instances ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+    --db-instance-identifier "$id" \
+    --query 'DBInstances[0].DBClusterIdentifier' --output text 2>/dev/null || echo "")
+
+  if [[ -n "$cluster_id" && "$cluster_id" != "None" ]]; then
+    # Skip if this cluster was already upgraded via another member
+    if grep -q "^${cluster_id}$" "$UPGRADED_CLUSTERS_FILE" 2>/dev/null; then
+      log_info "$id: Cluster '$cluster_id' already upgraded via another member. Skipping."
+      set_status "$id" "COMPLETED" "Cluster upgraded via primary"
+      return
+    fi
+
+    if [[ "$strategy" == "blue_green" ]]; then
+      log_warn "$id: Member of Multi-AZ DB Cluster '$cluster_id' — Blue/Green not supported. Forcing in_place."
+      strategy="in_place"
+    fi
+
+    # Use cluster ID for the upgrade (not instance ID)
+    log_info "$id: Will upgrade at cluster level: $cluster_id"
+    echo "$cluster_id" >> "$UPGRADED_CLUSTERS_FILE"
+    id="$cluster_id"
+  fi
 
   log_info "========== [$((idx+1))/$TOTAL] $id (strategy: $strategy) =========="
 
@@ -476,7 +504,7 @@ wait
 ELAPSED=$(( $(date +%s) - START_TIME ))
 
 # --- Cleanup temp files ---
-rm -f "$PARAM_GROUP_MAP_FILE" "$OPTION_GROUP_MAP_FILE" 2>/dev/null
+rm -f "$PARAM_GROUP_MAP_FILE" "$OPTION_GROUP_MAP_FILE" "$UPGRADED_CLUSTERS_FILE" 2>/dev/null
 
 # --- Summary ---
 COMPLETED=$(jq '[.instances[] | select(.status == "COMPLETED")] | length' "$STATE_FILE")

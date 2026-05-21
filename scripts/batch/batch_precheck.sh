@@ -75,18 +75,31 @@ PASS_COUNT=0
 FAIL_COUNT=0
 SKIP_COUNT=0
 RESULTS='[]'
+CHECKED_CLUSTERS=""
 
 while IFS= read -r instance; do
   id=$(echo "$instance" | jq -r '.instance_id')
   endpoint=$(echo "$instance" | jq -r '.endpoint')
   version=$(echo "$instance" | jq -r '.engine_version')
   source=$(echo "$instance" | jq -r '.source_instance // empty')
+  cluster_id=$(echo "$instance" | jq -r '.cluster_id // empty')
 
   # Skip read replicas (handled with primary)
   if [[ -n "$source" ]]; then
     echo "  [$id] Skipping (read replica of $source)"
     SKIP_COUNT=$((SKIP_COUNT + 1))
     continue
+  fi
+
+  # Skip duplicate cluster members (only precheck one member per cluster)
+  if [[ -n "$cluster_id" ]]; then
+    if echo "$CHECKED_CLUSTERS" | grep -q "^${cluster_id}$" 2>/dev/null; then
+      echo "  [$id] Skipping (cluster '$cluster_id' already checked)"
+      SKIP_COUNT=$((SKIP_COUNT + 1))
+      continue
+    fi
+    CHECKED_CLUSTERS="${CHECKED_CLUSTERS}${cluster_id}
+"
   fi
 
   # Skip instances without endpoint
