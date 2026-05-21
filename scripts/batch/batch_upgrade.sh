@@ -393,20 +393,56 @@ upgrade_blue_green() {
     return
   fi
 
-  log_step "Step 3: Creating Blue/Green deployment for instance '$id'"
-  local bg_args=(--instance-id "$id" --target-version "$TARGET_VERSION")
-  [[ -n "$target_pg" ]] && bg_args+=(--target-param-group "$target_pg")
-  [[ -n "$target_og" ]] && bg_args+=(--target-option-group "$target_og")
-  [[ -n "$REGION" ]] && bg_args+=(--region "$REGION")
+  # Check if instance already has an active Blue/Green deployment
+  local DEPLOYMENT_ID=""
+  local existing_bg
+  existing_bg=$(aws rds describe-blue-green-deployments ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+    --filters "Name=source,Values=arn:aws:rds:*:*:db:${id}" \
+    --query 'BlueGreenDeployments[?Status!=`DELETED` && Status!=`DELETING`] | [0]' \
+    --output json 2>/dev/null || echo "null")
 
-  BG_RESULT=$("$SCRIPT_DIR/upgrade/create_blue_green.sh" "${bg_args[@]}" 2>&1) || {
-    log_error "$id: Blue/Green creation failed: $BG_RESULT"
-    set_status "$id" "FAILED" "B/G creation failed"
-    return
-  }
+  if [[ "$existing_bg" != "null" && -n "$existing_bg" ]]; then
+    DEPLOYMENT_ID=$(echo "$existing_bg" | jq -r '.BlueGreenDeploymentIdentifier // empty')
+    local existing_status=$(echo "$existing_bg" | jq -r '.Status // empty')
 
-  DEPLOYMENT_ID=$(echo "$BG_RESULT" | jq -r '.deployment_id')
-  log_info "$id: Deployment created: $DEPLOYMENT_ID"
+    if [[ -n "$DEPLOYMENT_ID" ]]; then
+      log_warn "$id: Existing Blue/Green deployment found: $DEPLOYMENT_ID (status: $existing_status)"
+      case "$existing_status" in
+        AVAILABLE)
+          log_info "$id: Deployment already AVAILABLE. Skipping creation, proceeding to pre-switchover check."
+          ;;
+        PROVISIONING)
+          log_info "$id: Deployment still PROVISIONING. Proceeding to monitor."
+          ;;
+        SWITCHOVER_IN_PROGRESS)
+          log_info "$id: Switchover already in progress. Waiting for completion."
+          ;;
+        *)
+          log_error "$id: Existing deployment in unexpected state: $existing_status"
+          set_status "$id" "FAILED" "Existing B/G in state: $existing_status"
+          return
+          ;;
+      esac
+    fi
+  fi
+
+  # Create new deployment if none exists
+  if [[ -z "$DEPLOYMENT_ID" ]]; then
+    log_step "Step 3: Creating Blue/Green deployment for instance '$id'"
+    local bg_args=(--instance-id "$id" --target-version "$TARGET_VERSION")
+    [[ -n "$target_pg" ]] && bg_args+=(--target-param-group "$target_pg")
+    [[ -n "$target_og" ]] && bg_args+=(--target-option-group "$target_og")
+    [[ -n "$REGION" ]] && bg_args+=(--region "$REGION")
+
+    BG_RESULT=$("$SCRIPT_DIR/upgrade/create_blue_green.sh" "${bg_args[@]}" 2>&1) || {
+      log_error "$id: Blue/Green creation failed: $BG_RESULT"
+      set_status "$id" "FAILED" "B/G creation failed"
+      return
+    }
+
+    DEPLOYMENT_ID=$(echo "$BG_RESULT" | jq -r '.deployment_id')
+    log_info "$id: Deployment created: $DEPLOYMENT_ID"
+  fi
 
   log_step "Step 4: Monitoring Blue/Green deployment"
   "$SCRIPT_DIR/upgrade/monitor_blue_green.sh" --deployment-id "$DEPLOYMENT_ID" ${REGION:+--region "$REGION"} || {
