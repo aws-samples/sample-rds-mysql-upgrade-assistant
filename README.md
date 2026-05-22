@@ -410,6 +410,14 @@ For each instance, the tool follows 10 steps:
 - [Remediation Playbook](docs/remediation-playbook.md) — Fix steps for each precheck finding
 - [Application Validation Template](scripts/validate/app_validate_template.sql) — Customize with your critical queries
 
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING](CONTRIBUTING.md) for guidelines.
+
+- Report bugs or request features via [GitHub Issues](https://github.com/aws-samples/sample-rds-mysql-upgrade-assistant/issues)
+- Submit pull requests for bug fixes or new features
+- Share your precheck findings or remediation patterns
+
 ## License
 
 Apache 2.0 — See [LICENSE](LICENSE)
