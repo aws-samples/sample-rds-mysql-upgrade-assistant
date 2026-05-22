@@ -68,6 +68,18 @@ bash scripts/batch/batch_upgrade.sh \
 ```
 Monitor progress and report the summary (completed, failed, skipped).
 
+### Step 5b: Warm-Up Mode (Optional)
+For EBS lazy loading mitigation, set `auto_switchover: false` in the config. The batch will stop after green environments are ready (PENDING_SWITCHOVER state):
+```yaml
+# In batch_config.yaml
+auto_switchover: false
+```
+After warm-up period (hours/days), change to `auto_switchover: true` and resume:
+```bash
+bash scripts/batch/batch_upgrade.sh --config batch_config.yaml --resume
+```
+This picks up from where it stopped and executes switchover for all PENDING_SWITCHOVER instances.
+
 ### Step 6: Verify All Upgraded
 ```bash
 bash scripts/inventory/discover_instances.sh --version-prefix 8.0 --json

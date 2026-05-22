@@ -52,8 +52,12 @@ bash scripts/upgrade/create_blue_green.sh \
   --instance-id <instance_id> --target-version <target_version> \
   --target-param-group <param_group> \
   [--target-option-group <option_group>]
+```
 
-# Monitor until AVAILABLE
+> **Note on custom option groups:** If `--target-option-group` is specified, the tool automatically uses a two-step approach: creates the B/G deployment at the same version with the option group, then upgrades the green instance separately after B/G is ready. This is transparent — no additional user action needed.
+
+```bash
+# Monitor until AVAILABLE (includes green upgrade if two-step mode)
 bash scripts/upgrade/monitor_blue_green.sh \
   --deployment-id <deployment_id> --poll-interval 60
 
