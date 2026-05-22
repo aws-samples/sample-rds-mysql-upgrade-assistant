@@ -84,6 +84,63 @@ For one-off operations without Secrets Manager, suggest running the shell script
 
 ---
 
+## Workflow Decision Tree
+
+When guiding a user through an upgrade, follow this sequence and suggest the next step automatically:
+
+```
+1. discover_instances → show inventory summary
+2. run_precheck (or batch_precheck) → if ERRORs found → reference docs/remediation-playbook.md, help user fix, then re-run precheck
+3. check_option_group → report if custom option group needs migration
+4. prepare_param_group → confirm target parameter group is ready
+5. create_blue_green (or in_place_upgrade) → confirm strategy with user before executing
+6. monitor_blue_green → poll until AVAILABLE
+6b. validate_upgrade + app_validate (on green) → verify green environment health before switchover
+7. pre_switchover_check → all checks must PASS before proceeding
+8. switchover → ⚠️ REQUIRES EXPLICIT USER CONFIRMATION (see Guardrails below)
+9. validate_upgrade (connectivity check) → confirm endpoint reachable after switchover
+10. cleanup_blue_green → ⚠️ REQUIRES EXPLICIT USER CONFIRMATION
+```
+
+After each step completes successfully, suggest the next step with a brief explanation of what it does. If a step fails, diagnose and propose remediation before moving forward.
+
+## Guardrails for Destructive Operations
+
+The following operations are **irreversible** — you MUST:
+1. Clearly state the risk and impact before execution
+2. Ask the user for explicit confirmation (e.g., "Type 'yes' to proceed")
+3. Never auto-execute these in batch without per-instance confirmation
+
+| Operation | Risk |
+|-----------|------|
+| `switchover` | One-way — no reverse switchover. Data written after switchover cannot be rolled back to blue. |
+| `cleanup_blue_green --delete-source` | Permanently deletes the old blue instance. No recovery possible. |
+| `in_place_upgrade` | Causes downtime. Irreversible — rollback requires snapshot restore to a new instance. |
+| `in_place_upgrade` (Multi-AZ DB Cluster) | All cluster members go offline simultaneously during upgrade. |
+
+For `cleanup_blue_green` without `--delete-source`, the deployment metadata is deleted but the old instance is preserved — this is safe and does not require extra confirmation.
+
+## Error Handling Guidance
+
+When precheck reports ERROR findings:
+1. Reference `docs/remediation-playbook.md` for specific fix instructions
+2. Show the user the relevant SQL remediation for each ERROR
+3. After user applies fixes, suggest re-running precheck to verify
+4. Do NOT proceed to upgrade steps while ERRORs exist
+
+When precheck reports WARNING findings:
+- Inform the user but note these do not block upgrade
+- Offer to explain the implications if asked
+
+## Session Context Tracking
+
+When working with multiple instances in a session:
+- Maintain awareness of which instances have completed each step
+- If the user says "next instance" or "continue", proceed with the next pending instance
+- Summarize progress when asked (e.g., "3/10 instances upgraded, 1 failed precheck")
+
+---
+
 ## Supported Upgrade Paths
 
 - MySQL 8.0.28+ → 8.4.x (major version upgrade)
@@ -100,7 +157,8 @@ For one-off operations without Secrets Manager, suggest running the shell script
 - Old blue instance retained with renamed identifier for investigation
 - To revert: restore from pre-upgrade snapshot or use PITR (creates a new instance)
 - Requires: instance must be eligible for B/G (no unsupported features)
-- **Not supported for instances with cross-Region read replicas** — use in-place upgrade instead
+- **Not supported for:** Multi-AZ DB Clusters, instances with cross-Region read replicas, cascading read replicas, CloudFormation-managed instances, or instances with custom option groups during major version upgrade (use two-step approach or in-place)
+- See [Blue/Green Deployments limitations](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments.html#blue-green-deployments-limitations) for the full list
 
 ### In-Place Upgrade (Non-Production)
 - Directly modifies the instance engine version
@@ -233,7 +291,7 @@ Ref: [Blue/Green Switchover Guardrails](https://docs.aws.amazon.com/AmazonRDS/la
 1. Start with non-production environments
 2. Run precheck on all instances first (`--dry-run`)
 3. Upgrade in waves: dev → staging → prod
-4. Use concurrency carefully: 3-5 for B/G (green builds independently, blue stays live), 1 for in-place (each upgrade causes downtime — serial avoids multiple DBs offline simultaneously). Non-production in-place can use 2-3.
+4. Use concurrency carefully: 5-10 for B/G (green builds independently, blue stays live), 3-5 for non-production in-place. For production in-place (e.g., Multi-AZ DB Clusters), use 1 (serial) or schedule during maintenance windows.
 5. Monitor CloudWatch during upgrades
 6. Keep blue environments for 24-48 hours after switchover
 7. Run pre-switchover readiness check before switchover (`pre_switchover_check.sh`) to verify deployment status, replication health, and instance availability
