@@ -7,11 +7,11 @@
 #  Licensed under the Apache License, Version 2.0
 #
 # Usage:
-#   ./batch_precheck.sh -u <user> [--secret-id <id>] [--iam]
+#   ./batch_precheck.sh -u <user> [--secret-id <id>] [--iam] [--login-path <name>]
 #                       [--region <region>] [--version-prefix <prefix>]
 #                       [--phase2] [--json]
 #
-# Credential priority: --secret-id > --iam > interactive password prompt
+# Credential priority: --secret-id > --iam > --login-path > interactive password prompt
 # Interactive password is prompted once and reused for all instances.
 # ============================================================
 
@@ -21,6 +21,7 @@ umask 077
 USER=""
 SECRET_ID=""
 USE_IAM=false
+LOGIN_PATH=""
 REGION=""
 VERSION_PREFIX="8.0"
 RUN_PHASE2=false
@@ -34,6 +35,7 @@ while [[ $# -gt 0 ]]; do
     -u) USER="$2"; shift 2 ;;
     --secret-id) SECRET_ID="$2"; shift 2 ;;
     --iam) USE_IAM=true; shift ;;
+    --login-path) LOGIN_PATH="$2"; shift 2 ;;
     --region) REGION="$2"; shift 2 ;;
     --version-prefix) VERSION_PREFIX="$2"; shift 2 ;;
     --phase2) RUN_PHASE2=true; shift ;;
@@ -43,12 +45,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$USER" ]]; then
-  echo "Usage: $0 -u <user> [--secret-id <id>] [--iam] [--region <region>] [--version-prefix <prefix>] [--phase2] [--json]"
+  echo "Usage: $0 -u <user> [--secret-id <id>] [--iam] [--login-path <name>] [--region <region>] [--version-prefix <prefix>] [--phase2] [--json]"
   exit 1
 fi
 
 # --- Credential resolution ---
-if [[ -z "$SECRET_ID" && "$USE_IAM" == "false" ]]; then
+if [[ -z "$SECRET_ID" && "$USE_IAM" == "false" && -z "$LOGIN_PATH" ]]; then
   echo -n "Enter password (shared for all instances): "
   read -rs PASSWORD
   echo
@@ -117,6 +119,8 @@ while IFS= read -r instance; do
     PRECHECK_ARGS+=(--secret-id "$SECRET_ID")
   elif [[ "$USE_IAM" == "true" ]]; then
     PRECHECK_ARGS+=(--iam)
+  elif [[ -n "$LOGIN_PATH" ]]; then
+    PRECHECK_ARGS+=(--login-path "$LOGIN_PATH")
   elif [[ -n "$PASSWORD" ]]; then
     PRECHECK_ARGS+=(-p "$PASSWORD")
   fi

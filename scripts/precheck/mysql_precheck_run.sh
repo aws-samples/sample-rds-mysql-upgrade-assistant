@@ -14,9 +14,10 @@
 #
 # Usage:
 #   ./mysql_precheck_run.sh -h <host> -u <user> [-P <port>] [-p <password>]
-#                           [--secret-id <id>] [--iam] [--phase2] [--json]
+#                           [--secret-id <id>] [--iam] [--login-path <name>]
+#                           [--phase2] [--json]
 #
-# Credential priority: --secret-id > --iam > -p > MYSQL_PWD env var > interactive prompt
+# Credential priority: --secret-id > --iam > --login-path > -p > MYSQL_PWD env var > interactive prompt
 # If -p is omitted and no other method is specified, you will be prompted.
 # ============================================================
 
@@ -29,6 +30,7 @@ PORT="3306"
 PASSWORD=""
 SECRET_ID=""
 USE_IAM=false
+LOGIN_PATH=""
 RUN_PHASE2=false
 JSON_OUTPUT=false
 
@@ -37,10 +39,11 @@ while [[ $# -gt 0 ]]; do
     -h) HOST="$2"; shift 2 ;;
     -u) USER="$2"; shift 2 ;;
     -P) PORT="$2"; shift 2 ;;
-    -p) echo "WARNING: -p passes password via command line (visible in ps). Prefer --secret-id or --iam." >&2
+    -p) echo "WARNING: -p passes password via command line (visible in ps). Prefer --secret-id, --iam, or --login-path." >&2
         PASSWORD="$2"; shift 2 ;;
     --secret-id) SECRET_ID="$2"; shift 2 ;;
     --iam) USE_IAM=true; shift ;;
+    --login-path) LOGIN_PATH="$2"; shift 2 ;;
     --phase2) RUN_PHASE2=true; shift ;;
     --json) JSON_OUTPUT=true; shift ;;
     *) echo "Unknown option: $1"; exit 1 ;;
@@ -48,7 +51,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$HOST" || -z "$USER" ]]; then
-  echo "Usage: $0 -h <host> -u <user> [-P <port>] [-p <password>] [--secret-id <id>] [--phase2] [--json]"
+  echo "Usage: $0 -h <host> -u <user> [-P <port>] [-p <password>] [--secret-id <id>] [--iam] [--login-path <name>] [--phase2] [--json]"
   exit 1
 fi
 
@@ -63,7 +66,7 @@ if [[ ! "$USER" =~ ^[a-zA-Z0-9._-]+$ ]] || [ ${#USER} -gt 63 ]; then
   echo "ERROR: Invalid username format"; exit 1
 fi
 
-# --- Credential resolution (priority: --secret-id > --iam > -p > MYSQL_PWD env > prompt) ---
+# --- Credential resolution (priority: --secret-id > --iam > --login-path > -p > MYSQL_PWD env > prompt) ---
 if [[ -n "$SECRET_ID" ]]; then
   if ! command -v aws &>/dev/null; then
     echo "ERROR: AWS CLI not found. Install: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"
@@ -88,11 +91,15 @@ elif [[ "$USE_IAM" == "true" ]]; then
   fi
   PASSWORD="$TOKEN_OUTPUT"
   unset TOKEN_OUTPUT
+elif [[ -n "$LOGIN_PATH" ]]; then
+  # mysql_config_editor stores credentials in ~/.mylogin.cnf (encrypted)
+  # No password resolution needed — mysql client reads it via --login-path
+  :
 elif [[ -z "$PASSWORD" && -n "${MYSQL_PWD:-}" ]]; then
   PASSWORD="$MYSQL_PWD"
 fi
 
-if [[ -z "$PASSWORD" ]]; then
+if [[ -z "$PASSWORD" && -z "$LOGIN_PATH" ]]; then
   echo -n "Enter password: "
   read -rs PASSWORD
   echo
@@ -122,16 +129,22 @@ chmod 700 "$TMPDIR_PRECHECK"
 mkdir -p "$SCRIPT_DIR/precheck_reports"
 REPORT_OUT="$SCRIPT_DIR/precheck_reports/precheck_$(echo "$HOST" | tr '.' '_')_$(date +%Y%m%d_%H%M%S).log"
 
-cat > "$DEFAULTS_FILE" <<EOF
+# Build connection args based on credential method
+if [[ -n "$LOGIN_PATH" ]]; then
+  # login-path provides host/user/password from ~/.mylogin.cnf
+  # We still override host/port/user from CLI args for flexibility
+  CONN_ARGS=(--login-path="$LOGIN_PATH" --connect-timeout=10 --ssl-mode=REQUIRED --host="$HOST" --port="$PORT" --user="$USER")
+else
+  cat > "$DEFAULTS_FILE" <<EOF
 [client]
 password=$PASSWORD
 EOF
-unset PASSWORD
+  unset PASSWORD
+  CONN_ARGS=(--defaults-extra-file="$DEFAULTS_FILE" --connect-timeout=10 --ssl-mode=REQUIRED --host="$HOST" --port="$PORT" --user="$USER")
+fi
 
 cleanup() { rm -rf "$TMPDIR_PRECHECK"; }
 trap cleanup EXIT
-
-CONN_ARGS=(--defaults-extra-file="$DEFAULTS_FILE" --connect-timeout=10 --ssl-mode=REQUIRED --host="$HOST" --port="$PORT" --user="$USER")
 
 # --- Connection test ---
 if ! mysql "${CONN_ARGS[@]}" -e "SELECT 1" > /dev/null 2>&1; then
