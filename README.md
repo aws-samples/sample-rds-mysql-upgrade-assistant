@@ -154,14 +154,14 @@ cd sample-rds-mysql-upgrade-assistant
 ### 2. Run precheck on an instance
 
 ```bash
-# Interactive password prompt
-./scripts/precheck/mysql_precheck_run.sh -h <endpoint> -u <user>
-
 # Using Secrets Manager (recommended)
 ./scripts/precheck/mysql_precheck_run.sh -h <endpoint> -u <user> --secret-id prod/db01/creds
 
 # Using IAM database authentication
 ./scripts/precheck/mysql_precheck_run.sh -h <endpoint> -u <iam_user> --iam
+
+# Using mysql_config_editor (local encrypted credential store)
+./scripts/precheck/mysql_precheck_run.sh -h <endpoint> -u <user> --login-path prod-db
 
 # Interactive password prompt (fallback)
 ./scripts/precheck/mysql_precheck_run.sh -h <endpoint> -u <user>
@@ -220,14 +220,17 @@ The batch orchestrator also performs runtime auto-detection: if an instance belo
 For standalone batch precheck (without triggering upgrades):
 
 ```bash
-# Interactive password (shared for all instances)
-./scripts/batch/batch_precheck.sh -u admin --region us-west-2
-
-# Using Secrets Manager
+# Using Secrets Manager (recommended)
 ./scripts/batch/batch_precheck.sh -u admin --secret-id prod/rds/creds --region us-west-2
 
 # Using IAM database authentication
 ./scripts/batch/batch_precheck.sh -u iam_user --iam --region us-west-2
+
+# Using mysql_config_editor
+./scripts/batch/batch_precheck.sh -u admin --login-path prod-db --region us-west-2
+
+# Interactive password (shared for all instances)
+./scripts/batch/batch_precheck.sh -u admin --region us-west-2
 ```
 
 ## Using with Kiro

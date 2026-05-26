@@ -154,14 +154,14 @@ cd sample-rds-mysql-upgrade-assistant
 ### 2. 对实例执行 precheck
 
 ```bash
-# Interactive password prompt
-./scripts/precheck/mysql_precheck_run.sh -h <endpoint> -u <user>
-
 # Using Secrets Manager (recommended)
 ./scripts/precheck/mysql_precheck_run.sh -h <endpoint> -u <user> --secret-id prod/db01/creds
 
 # Using IAM database authentication
 ./scripts/precheck/mysql_precheck_run.sh -h <endpoint> -u <iam_user> --iam
+
+# Using mysql_config_editor (local encrypted credential store)
+./scripts/precheck/mysql_precheck_run.sh -h <endpoint> -u <user> --login-path prod-db
 
 # Interactive password prompt (fallback)
 ./scripts/precheck/mysql_precheck_run.sh -h <endpoint> -u <user>
@@ -220,14 +220,17 @@ cd sample-rds-mysql-upgrade-assistant
 独立批次预检（不触发升级）：
 
 ```bash
-# 交互式密码（所有实例共用）
-./scripts/batch/batch_precheck.sh -u admin --region us-west-2
-
-# 使用 Secrets Manager
+# 使用 Secrets Manager（推荐）
 ./scripts/batch/batch_precheck.sh -u admin --secret-id prod/rds/creds --region us-west-2
 
 # 使用 IAM 数据库认证
 ./scripts/batch/batch_precheck.sh -u iam_user --iam --region us-west-2
+
+# 使用 mysql_config_editor
+./scripts/batch/batch_precheck.sh -u admin --login-path prod-db --region us-west-2
+
+# 交互式密码（所有实例共用）
+./scripts/batch/batch_precheck.sh -u admin --region us-west-2
 ```
 
 
