@@ -25,14 +25,14 @@ Use the batch precheck script to check all instances at once:
 # Using Secrets Manager (recommended)
 bash scripts/batch/batch_precheck.sh -u <user> --secret-id <secret_id> --json
 
+# Using IAM database authentication
+bash scripts/batch/batch_precheck.sh -u <iam_user> --iam --json
+
 # Using mysql_config_editor (local encrypted credential store)
 bash scripts/batch/batch_precheck.sh -u <user> --login-path <name> --json
 
 # Using interactive password (all instances share same password)
 bash scripts/batch/batch_precheck.sh -u <user>
-
-# Using IAM database authentication
-bash scripts/batch/batch_precheck.sh -u <iam_user> --iam --json
 ```
 
 Or run individually for specific instances:
