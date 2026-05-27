@@ -194,6 +194,12 @@ When working with multiple instances in a session:
 - `FULL` and `INTERSECT` became reserved in 8.0.31
 - Objects using these names need backtick quoting
 
+### Foreign Key Behavior Change
+- `restrict_fk_on_non_standard_key` — New parameter in MySQL 8.4 (default ON)
+- Blocks CREATE TABLE and ALTER TABLE from creating foreign keys on non-unique or partial keys
+- Does NOT affect existing foreign keys or the upgrade itself — only new DDL after upgrade
+- If your application creates or modifies foreign keys at runtime, set this parameter to OFF in your MySQL 8.4 parameter group, or adjust DDL statements accordingly
+
 ### SQL Mode Changes
 - `binlog_format` only supports ROW in 8.4 (STATEMENT/MIXED deprecated)
 
