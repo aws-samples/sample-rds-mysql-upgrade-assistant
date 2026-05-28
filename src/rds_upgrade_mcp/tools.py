@@ -18,7 +18,31 @@ def _run(script: str, args: list[str], timeout: int = 300) -> dict | list:
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     if result.returncode != 0:
         raise RuntimeError(f"{script} failed: {result.stderr.strip() or result.stdout.strip()}")
-    return json.loads(result.stdout)
+    # Extract JSON from output (scripts may print non-JSON text before the JSON block)
+    stdout = result.stdout.strip()
+    # Try parsing the full output first
+    try:
+        return json.loads(stdout)
+    except json.JSONDecodeError:
+        pass
+    # Find the last JSON object or array in the output
+    for i in range(len(stdout) - 1, -1, -1):
+        if stdout[i] in ('}', ']'):
+            # Find matching opening brace/bracket
+            target = '{' if stdout[i] == '}' else '['
+            depth = 0
+            for j in range(i, -1, -1):
+                if stdout[j] == stdout[i]:
+                    depth += 1
+                elif stdout[j] == target:
+                    depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(stdout[j:i+1])
+                    except json.JSONDecodeError:
+                        break
+            break
+    raise RuntimeError(f"{script}: could not parse JSON from output:\n{stdout[-500:]}")
 
 
 def register_tools(mcp):

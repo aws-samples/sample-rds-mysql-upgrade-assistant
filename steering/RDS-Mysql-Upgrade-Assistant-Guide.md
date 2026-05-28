@@ -108,6 +108,8 @@ After each step completes successfully, suggest the next step with a brief expla
 
 > ⚠️ **CRITICAL**: Never call `create_blue_green` with `--target-version` if the instance has a custom option group. Always check option group status (step 3) BEFORE creating the B/G deployment. If custom option group exists, omit `--target-version` to create a same-version B/G, then upgrade the green instance separately.
 
+> ⚠️ **CREDENTIALS**: Always ask the user for `secret_id` before calling any tool that requires database credentials (`run_precheck`, `batch_precheck`, `app_validate`). Do NOT guess or auto-discover secrets from Secrets Manager. If the user hasn't provided one, ask them explicitly.
+
 ## Guardrails for Destructive Operations
 
 The following operations are **irreversible** — you MUST:
