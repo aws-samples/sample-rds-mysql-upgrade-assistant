@@ -15,6 +15,13 @@ Execute the full upgrade workflow for a single RDS MySQL instance.
 
 ## Steps
 
+### Step 0: Get Instance Details
+Resolve the instance endpoint (required for precheck and validation):
+```bash
+bash scripts/inventory/discover_instances.sh --version-prefix 8.0 --json | jq '.[] | select(.instance_id == "<instance_id>")'
+```
+Extract the `endpoint` field. Also confirm the user has a `secret_id` configured — if not, guide them to create one (see Credential Security in steering guide).
+
 ### Step 1: Precheck
 Run the 19-check compatibility assessment:
 ```bash
