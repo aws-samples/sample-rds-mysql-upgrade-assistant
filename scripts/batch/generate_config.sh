@@ -25,6 +25,7 @@ REGION=""
 VERSION_PREFIX="8.0"
 TARGET_VERSION="8.4.9"
 TARGET_PARAM_FAMILY="mysql8.4"
+CONCURRENCY=5
 SECRET_PREFIX=""
 OUTPUT_FILE=""
 TAGS=()
@@ -34,6 +35,7 @@ while [[ $# -gt 0 ]]; do
     --region) REGION="$2"; shift 2 ;;
     --version-prefix) VERSION_PREFIX="$2"; shift 2 ;;
     --target-version) TARGET_VERSION="$2"; shift 2 ;;
+    --concurrency) CONCURRENCY="$2"; shift 2 ;;
     --secret-prefix) SECRET_PREFIX="$2"; shift 2 ;;
     --output) OUTPUT_FILE="$2"; shift 2 ;;
     --tag) TAGS+=("$2"); shift 2 ;;
@@ -76,7 +78,7 @@ CLUSTER_MEMBERS=$(aws rds describe-db-clusters \
 generate() {
   echo "target_version: \"$TARGET_VERSION\""
   echo "target_param_family: \"$TARGET_PARAM_FAMILY\""
-  echo "concurrency: 3"
+  echo "concurrency: $CONCURRENCY"
   echo "precheck_phase2: false"
   echo "cleanup_blue_after_switchover: true"
   echo ""

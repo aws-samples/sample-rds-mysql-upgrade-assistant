@@ -202,6 +202,7 @@ def register_tools(mcp):
         region: str = "",
         version_prefix: str = "8.0",
         secret_prefix: str = "",
+        concurrency: int = 5,
         output: str = "",
     ) -> str:
         """Generate batch upgrade config from discovered instances."""
@@ -210,6 +211,7 @@ def register_tools(mcp):
             args += ["--region", region]
         if secret_prefix:
             args += ["--secret-prefix", secret_prefix]
+        args += ["--concurrency", str(concurrency)]
         if output:
             args += ["--output", output]
         result = subprocess.run(
