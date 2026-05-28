@@ -561,8 +561,25 @@ upgrade_blue_green() {
   # Create new deployment if none exists
   if [[ -z "$DEPLOYMENT_ID" ]]; then
     log_step "Step 3: Creating Blue/Green deployment for instance '$id'"
-    local bg_args=(--instance-id "$id" --target-version "$TARGET_VERSION")
-    [[ -n "$target_pg" ]] && bg_args+=(--target-param-group "$target_pg")
+
+    # Detect if instance has a custom option group — forces two-step B/G
+    # (RDS doesn't allow major version upgrade + custom option group in one call)
+    local has_custom_og=false
+    local instance_og
+    instance_og=$(aws rds describe-db-instances ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+      --db-instance-identifier "$id" \
+      --query 'DBInstances[0].OptionGroupMemberships[0].OptionGroupName' \
+      --output text 2>/dev/null || echo "")
+    if [[ -n "$instance_og" && "$instance_og" != default:* && "$instance_og" != "None" ]]; then
+      has_custom_og=true
+      log_warn "$id: Custom option group '$instance_og' detected. Using two-step B/G (create same-version → upgrade green)."
+    fi
+
+    local bg_args=(--instance-id "$id")
+    if [[ "$has_custom_og" == "false" ]]; then
+      bg_args+=(--target-version "$TARGET_VERSION")
+    fi
+    [[ -n "$target_pg" && "$has_custom_og" == "false" ]] && bg_args+=(--target-param-group "$target_pg")
     [[ -n "$target_og" ]] && bg_args+=(--target-option-group "$target_og")
     [[ -n "$REGION" ]] && bg_args+=(--region "$REGION")
 

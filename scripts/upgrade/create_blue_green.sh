@@ -42,8 +42,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$INSTANCE_ID" || -z "$TARGET_VERSION" ]]; then
-  echo "Usage: $0 --instance-id <id> --target-version <ver> [--target-param-group <group>] [--target-option-group <group>] [--region <region>]"
+if [[ -z "$INSTANCE_ID" ]]; then
+  echo "Usage: $0 --instance-id <id> [--target-version <ver>] [--target-param-group <group>] [--target-option-group <group>] [--region <region>]"
   exit 1
 fi
 
@@ -103,12 +103,14 @@ fi
 
 DEPLOYMENT_NAME="bgd-${INSTANCE_ID}-$(date +%Y%m%d%H%M%S)"
 
-# Detect if we need two-step upgrade (custom option group + major version)
+# Detect if we need two-step upgrade:
+# - Custom option group specified, OR
+# - No target version specified (caller wants same-version B/G)
 # RDS doesn't support custom option groups with major version upgrade in a single B/G creation
 TWO_STEP=false
-if [[ -n "$TARGET_OPTION_GROUP" ]]; then
+if [[ -n "$TARGET_OPTION_GROUP" || -z "$TARGET_VERSION" ]]; then
   TWO_STEP=true
-  echo "Custom option group detected. Using two-step B/G: create same-version → upgrade green." >&2
+  echo "Two-step B/G mode: create same-version deployment, then upgrade green separately." >&2
 fi
 
 BG_ARGS=(
