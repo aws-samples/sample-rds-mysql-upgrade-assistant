@@ -61,6 +61,7 @@ EFFECTIVE_REGION="${REGION:-$(aws configure get region 2>/dev/null || echo 'us-e
 RESULT=$(echo "$RAW" | jq --arg prefix "$VERSION_PREFIX" --arg region "$EFFECTIVE_REGION" '
   [.DBInstances[]
    | select(.EngineVersion | startswith($prefix))
+   | select(.DBInstanceIdentifier | test("-old[0-9]*$") | not)
    | {
        instance_id: .DBInstanceIdentifier,
        engine_version: .EngineVersion,
