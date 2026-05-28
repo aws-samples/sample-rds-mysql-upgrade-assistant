@@ -521,34 +521,40 @@ upgrade_blue_green() {
 
   # Check if instance already has an active Blue/Green deployment
   local DEPLOYMENT_ID=""
-  local existing_bg
-  existing_bg=$(aws rds describe-blue-green-deployments ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
-    --filters "Name=source,Values=arn:aws:rds:*:*:db:${id}" \
-    --query 'BlueGreenDeployments[?Status!=`DELETED` && Status!=`DELETING`] | [0]' \
-    --output json 2>/dev/null || echo "null")
+  local source_arn
+  source_arn=$(aws rds describe-db-instances ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+    --db-instance-identifier "$id" \
+    --query 'DBInstances[0].DBInstanceArn' --output text 2>/dev/null || echo "")
 
-  if [[ "$existing_bg" != "null" && -n "$existing_bg" ]]; then
-    DEPLOYMENT_ID=$(echo "$existing_bg" | jq -r '.BlueGreenDeploymentIdentifier // empty')
-    local existing_status=$(echo "$existing_bg" | jq -r '.Status // empty')
+  if [[ -n "$source_arn" && "$source_arn" != "None" ]]; then
+    local existing_bg
+    existing_bg=$(aws rds describe-blue-green-deployments ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+      --query "BlueGreenDeployments[?Source=='${source_arn}' && Status!='DELETED' && Status!='DELETING'] | [0]" \
+      --output json 2>/dev/null || echo "null")
 
-    if [[ -n "$DEPLOYMENT_ID" ]]; then
-      log_warn "$id: Existing Blue/Green deployment found: $DEPLOYMENT_ID (status: $existing_status)"
-      case "$existing_status" in
-        AVAILABLE)
-          log_info "$id: Deployment already AVAILABLE. Skipping creation, proceeding to pre-switchover check."
-          ;;
-        PROVISIONING)
-          log_info "$id: Deployment still PROVISIONING. Proceeding to monitor."
-          ;;
-        SWITCHOVER_IN_PROGRESS)
-          log_info "$id: Switchover already in progress. Waiting for completion."
-          ;;
-        *)
-          log_error "$id: Existing deployment in unexpected state: $existing_status"
-          set_status "$id" "FAILED" "Existing B/G in state: $existing_status"
-          return
-          ;;
-      esac
+    if [[ "$existing_bg" != "null" && "$existing_bg" != "None" && -n "$existing_bg" ]]; then
+      DEPLOYMENT_ID=$(echo "$existing_bg" | jq -r '.BlueGreenDeploymentIdentifier // empty')
+      local existing_status=$(echo "$existing_bg" | jq -r '.Status // empty')
+
+      if [[ -n "$DEPLOYMENT_ID" ]]; then
+        log_warn "$id: Existing Blue/Green deployment found: $DEPLOYMENT_ID (status: $existing_status)"
+        case "$existing_status" in
+          AVAILABLE)
+            log_info "$id: Deployment already AVAILABLE. Skipping creation, proceeding to validate."
+            ;;
+          PROVISIONING)
+            log_info "$id: Deployment still PROVISIONING. Proceeding to monitor."
+            ;;
+          SWITCHOVER_IN_PROGRESS)
+            log_info "$id: Switchover already in progress. Waiting for completion."
+            ;;
+          *)
+            log_error "$id: Existing deployment in unexpected state: $existing_status"
+            set_status "$id" "FAILED" "Existing B/G in state: $existing_status"
+            return
+            ;;
+        esac
+      fi
     fi
   fi
 
