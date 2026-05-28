@@ -49,21 +49,35 @@ if type audit_init &>/dev/null; then
 fi
 
 DELETE_ARGS=()
-if [[ "$DELETE_SOURCE" == "true" ]]; then
-  # After switchover, the old blue instance is renamed with -old1 suffix.
-  # --delete-target on delete-blue-green-deployment deletes the OLD source (now -old1).
-  # Note: RDS API naming is confusing post-switchover.
-  DELETE_ARGS=(--delete-target)
-fi
 
 if ! RESULT=$(aws rds delete-blue-green-deployment \
   ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --blue-green-deployment-identifier "$DEPLOYMENT_ID" \
-  ${DELETE_ARGS[@]+"${DELETE_ARGS[@]}"} \
+  --no-delete-target \
   --output json 2>&1); then
   echo "ERROR: Cleanup failed: $RESULT" >&2
-  echo "Check deployment status (must be SWITCHOVER_COMPLETED or AVAILABLE) and IAM permissions." >&2
+  echo "Check deployment status (must be SWITCHOVER_COMPLETED) and IAM permissions." >&2
   exit 1
+fi
+
+# Optionally delete the old blue instance (-old1 suffix) after deployment cleanup
+if [[ "$DELETE_SOURCE" == "true" ]]; then
+  # Find the old source instance from the deployment details
+  OLD_SOURCE=$(echo "$RESULT" | jq -r '.BlueGreenDeployment.SwitchoverDetails[]? | select(.SourceMember != null) | .SourceMember' 2>/dev/null | head -1)
+  OLD_INSTANCE_ID=$(echo "$OLD_SOURCE" | grep -o '[^:]*$')
+
+  if [[ -n "$OLD_INSTANCE_ID" && "$OLD_INSTANCE_ID" != "None" ]]; then
+    echo "Deleting old blue instance: $OLD_INSTANCE_ID ..." >&2
+    aws rds delete-db-instance \
+      ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+      --db-instance-identifier "$OLD_INSTANCE_ID" \
+      --skip-final-snapshot \
+      --output json > /dev/null 2>&1 || {
+      echo "WARNING: Failed to delete old instance '$OLD_INSTANCE_ID'. May need manual cleanup." >&2
+    }
+  else
+    echo "WARNING: Could not determine old blue instance. Manual cleanup may be needed." >&2
+  fi
 fi
 
 echo "$RESULT" | jq '{
