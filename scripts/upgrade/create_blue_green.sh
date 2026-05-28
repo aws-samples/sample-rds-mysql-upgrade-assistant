@@ -104,12 +104,26 @@ fi
 DEPLOYMENT_NAME="bgd-${INSTANCE_ID}-$(date +%Y%m%d%H%M%S)"
 
 # Detect if we need two-step upgrade:
-# - Custom option group specified, OR
+# - Custom option group on the instance (auto-detected), OR
+# - Custom option group specified via --target-option-group, OR
 # - No target version specified (caller wants same-version B/G)
 # RDS doesn't support custom option groups with major version upgrade in a single B/G creation
 TWO_STEP=false
+
+# Auto-detect custom option group on the instance
+if [[ "$IS_CLUSTER" == "false" ]]; then
+  INSTANCE_OG=$(echo "$INST_JSON" | jq -r '.DBInstances[0].OptionGroupMemberships[0].OptionGroupName // empty')
+  if [[ -n "$INSTANCE_OG" && "$INSTANCE_OG" != default:* && "$INSTANCE_OG" != "None" ]]; then
+    TWO_STEP=true
+    echo "Instance has custom option group '$INSTANCE_OG'. Forcing two-step B/G mode." >&2
+  fi
+fi
+
 if [[ -n "$TARGET_OPTION_GROUP" || -z "$TARGET_VERSION" ]]; then
   TWO_STEP=true
+fi
+
+if [[ "$TWO_STEP" == "true" ]]; then
   echo "Two-step B/G mode: create same-version deployment, then upgrade green separately." >&2
 fi
 
