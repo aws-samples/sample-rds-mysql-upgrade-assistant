@@ -127,8 +127,19 @@ fi
 if [[ "$IS_CLUSTER" == "true" ]]; then
   [[ -n "$TARGET_PARAM_GROUP" && "$TWO_STEP" == "false" ]] && BG_ARGS+=(--target-db-cluster-parameter-group-name "$TARGET_PARAM_GROUP")
 else
-  [[ -n "$TARGET_PARAM_GROUP" && "$TWO_STEP" == "false" ]] && BG_ARGS+=(--target-db-parameter-group-name "$TARGET_PARAM_GROUP")
-  if [[ -n "$TARGET_OPTION_GROUP" ]]; then
+  if [[ "$TWO_STEP" == "false" ]]; then
+    # One-step: use the 8.4 target param group
+    [[ -n "$TARGET_PARAM_GROUP" ]] && BG_ARGS+=(--target-db-parameter-group-name "$TARGET_PARAM_GROUP")
+  else
+    # Two-step: use the source (8.0) param group for same-version B/G
+    # RDS requires target param group if source uses a custom one
+    local source_pg
+    source_pg=$(echo "$INST_JSON" | jq -r '.DBInstances[0].DBParameterGroups[0].DBParameterGroupName // empty')
+    if [[ -n "$source_pg" && "$source_pg" != default.* ]]; then
+      BG_ARGS+=(--target-db-parameter-group-name "$source_pg")
+    fi
+  fi
+  if [[ -n "$TARGET_OPTION_GROUP" && "$TWO_STEP" == "false" ]]; then
     BG_ARGS+=(--target-db-instance-option-group-name "$TARGET_OPTION_GROUP")
   fi
 fi

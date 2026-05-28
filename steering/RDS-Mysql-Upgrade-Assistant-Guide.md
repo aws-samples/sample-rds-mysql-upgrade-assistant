@@ -91,9 +91,11 @@ When guiding a user through an upgrade, follow this sequence and suggest the nex
 ```
 1. discover_instances → show inventory summary
 2. run_precheck (or batch_precheck) → if ERRORs found → reference docs/remediation-playbook.md, help user fix, then re-run precheck
-3. check_option_group → report if custom option group needs migration
+3. check_option_group → report if custom option group needs migration. ⚠️ MUST complete before step 5 — custom option groups require two-step B/G
 4. prepare_param_group → confirm target parameter group is ready
 5. create_blue_green (or in_place_upgrade) → confirm strategy with user before executing
+   - If instance has custom option group → MUST use two-step B/G (no --target-version)
+   - If instance is Multi-AZ DB Cluster → MUST use in_place_upgrade
 6. monitor_blue_green → poll until AVAILABLE
 6b. validate_upgrade + app_validate (on green) → verify green environment health before switchover
 7. pre_switchover_check → all checks must PASS before proceeding
@@ -103,6 +105,8 @@ When guiding a user through an upgrade, follow this sequence and suggest the nex
 ```
 
 After each step completes successfully, suggest the next step with a brief explanation of what it does. If a step fails, diagnose and propose remediation before moving forward.
+
+> ⚠️ **CRITICAL**: Never call `create_blue_green` with `--target-version` if the instance has a custom option group. Always check option group status (step 3) BEFORE creating the B/G deployment. If custom option group exists, omit `--target-version` to create a same-version B/G, then upgrade the green instance separately.
 
 ## Guardrails for Destructive Operations
 
