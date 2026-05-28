@@ -789,6 +789,7 @@ log_info "State file:   $STATE_FILE"
 log_info "============================================================"
 
 ACTIVE_JOBS=0
+PIDS=()
 START_TIME=$(date +%s)
 
 for ((i=0; i<TOTAL; i++)); do
@@ -800,14 +801,27 @@ for ((i=0; i<TOTAL; i++)); do
     continue
   fi
 
-  # Concurrency control
+  # Concurrency control (bash 4.2+ compatible — no wait -n)
   while [[ "$ACTIVE_JOBS" -ge "$CONCURRENCY" ]]; do
-    wait -n 2>/dev/null || true
-    ACTIVE_JOBS=$((ACTIVE_JOBS - 1))
+    # Wait for any one background job to finish
+    local_wait_done=false
+    for pid_idx in "${!PIDS[@]}"; do
+      if ! kill -0 "${PIDS[$pid_idx]}" 2>/dev/null; then
+        wait "${PIDS[$pid_idx]}" 2>/dev/null || true
+        unset 'PIDS[pid_idx]'
+        ACTIVE_JOBS=$((ACTIVE_JOBS - 1))
+        local_wait_done=true
+        break
+      fi
+    done
+    if [[ "$local_wait_done" == "false" ]]; then
+      sleep 5
+    fi
   done
 
   if [[ "$CONCURRENCY" -gt 1 ]]; then
     upgrade_instance "$i" &
+    PIDS+=($!)
     ACTIVE_JOBS=$((ACTIVE_JOBS + 1))
   else
     upgrade_instance "$i"
