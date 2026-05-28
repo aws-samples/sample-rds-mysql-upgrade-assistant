@@ -45,7 +45,10 @@ def register_tools(mcp):
         phase2: bool = False,
     ) -> dict:
         """Run MySQL 8.0→8.4 precheck. Returns findings summary as JSON.
-        Credential priority: secret_id > password. One must be provided."""
+        Credential priority: secret_id > password.
+        IMPORTANT: At least one credential method must be provided (secret_id or password).
+        Without credentials, the script will hang waiting for interactive input.
+        Prefer secret_id for security."""
         args = ["-h", host, "-u", user, "--json"]
         if secret_id:
             args += ["--secret-id", secret_id]
@@ -300,6 +303,8 @@ def register_tools(mcp):
     ) -> str:
         """Run prechecks on all MySQL 8.0 instances in batch.
         Credential priority: secret_id > password.
+        IMPORTANT: At least one credential method must be provided (secret_id or password).
+        Without credentials, the script will hang waiting for interactive input.
         Returns summary with pass/fail counts per instance."""
         args = ["-u", user]
         if secret_id:
