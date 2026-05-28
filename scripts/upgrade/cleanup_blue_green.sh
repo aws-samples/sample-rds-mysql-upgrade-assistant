@@ -50,17 +50,19 @@ fi
 
 DELETE_ARGS=()
 if [[ "$DELETE_SOURCE" == "true" ]]; then
+  # After switchover, the old blue instance is renamed with -old1 suffix.
+  # --delete-target on delete-blue-green-deployment deletes the OLD source (now -old1).
+  # Note: RDS API naming is confusing post-switchover.
   DELETE_ARGS=(--delete-target)
 fi
 
-RESULT=$(aws rds delete-blue-green-deployment \
+if ! RESULT=$(aws rds delete-blue-green-deployment \
   ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --blue-green-deployment-identifier "$DEPLOYMENT_ID" \
   ${DELETE_ARGS[@]+"${DELETE_ARGS[@]}"} \
-  --output json 2>&1)
-
-if [[ $? -ne 0 ]]; then
-  echo "ERROR: Cleanup failed. Check deployment status and IAM permissions." >&2
+  --output json 2>&1); then
+  echo "ERROR: Cleanup failed: $RESULT" >&2
+  echo "Check deployment status (must be SWITCHOVER_COMPLETED or AVAILABLE) and IAM permissions." >&2
   exit 1
 fi
 
