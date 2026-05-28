@@ -12,7 +12,7 @@ Automate the full batch upgrade workflow from discovery to completion.
 - `region` (optional) — AWS region (default: AWS CLI configured region)
 - `target_version` — Target MySQL version (default: 8.4.9)
 - `secret_prefix` (optional) — Secrets Manager prefix for credentials
-- `concurrency` — Number of parallel upgrades (default: 3)
+- `concurrency` — Number of parallel upgrades (default: 5, recommended: 5–10 for Blue/Green)
 
 ## Steps
 
@@ -27,6 +27,7 @@ Report the number of instances found and their details.
 bash scripts/batch/generate_config.sh \
   --target-version <target_version> \
   --secret-prefix <secret_prefix> \
+  --concurrency <concurrency> \
   --output batch_config.yaml
 ```
 The generator auto-detects:
