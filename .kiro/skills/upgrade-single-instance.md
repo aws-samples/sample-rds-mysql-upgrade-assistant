@@ -48,6 +48,7 @@ bash scripts/params/check_option_group.sh \
 - If default option group → skip
 
 ### Step 3: Detect Strategy
+- If `discover_instances` returned `blue_green_role: "green"` → use **`upgrade_green_instance`** (already in B/G deployment, needs version upgrade only)
 - If instance is a Multi-AZ DB Cluster → use **in-place** (Blue/Green not supported)
 - If instance has cross-region read replicas → use **in-place** (Blue/Green not supported)
 - Otherwise → use **Blue/Green** (recommended)
