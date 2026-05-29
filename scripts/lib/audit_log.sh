@@ -34,7 +34,7 @@ audit_init() {
     echo "Timestamp : $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "User      : $(whoami)"
     echo "Host      : $(hostname -s 2>/dev/null || echo unknown)"
-    echo "Script    : $(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+    echo "Script    : $(cd "$(dirname "${0:-.}")" 2>/dev/null && pwd || pwd)/$(basename "${0:-.}")"
     echo "Arguments : $*"
     echo "PID       : $$"
     echo "AWS Caller: $(aws sts get-caller-identity --query 'Arn' --output text 2>/dev/null || echo 'unknown')"
