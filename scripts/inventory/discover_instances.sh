@@ -93,9 +93,9 @@ BG_TARGETS=$(echo "$BG_INFO" | jq '[.[].Targets[]? // empty]')
 # Mark green (target) instances with blue_green_role=green
 RESULT=$(echo "$RESULT" | jq --argjson sources "$BG_SOURCES" --argjson targets "$BG_TARGETS" '
   [.[] |
-    if (. as $inst | $sources | map(contains($inst.instance_id)) | any) then
+    if (. as $inst | $sources | map(endswith(":" + $inst.instance_id)) | any) then
       empty
-    elif (. as $inst | $targets | map(contains($inst.instance_id)) | any) then
+    elif (. as $inst | $targets | map(endswith(":" + $inst.instance_id)) | any) then
       . + {blue_green_role: "green", upgrade_strategy: "in_place"}
     else
       . + {blue_green_role: null, upgrade_strategy: null}

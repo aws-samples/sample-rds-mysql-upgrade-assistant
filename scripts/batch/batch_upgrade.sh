@@ -378,11 +378,12 @@ upgrade_instance() {
   local strategy="${INSTANCE_STRATEGIES[$idx]}"
 
   # Auto-detect Green instance (B/G two-step) — force in_place
-  if [[ "$id" == *-green-* ]]; then
-    if [[ "$strategy" == "blue_green" ]]; then
-      log_warn "$id: Green instance detected. Forcing in_place (already in B/G deployment)."
-      strategy="in_place"
-    fi
+  # This is a safety net; generate_config.sh already assigns in_place for green instances.
+  # Uses naming convention as heuristic — authoritative check is in discover_instances.sh
+  # which uses actual B/G deployment data (blue_green_role field).
+  if [[ "$id" == *-green-* && "$strategy" == "blue_green" ]]; then
+    log_warn "$id: Appears to be a Green instance (B/G two-step). Forcing in_place."
+    strategy="in_place"
   fi
 
   # Auto-detect Multi-AZ DB Cluster — force in_place (Blue/Green not supported)
