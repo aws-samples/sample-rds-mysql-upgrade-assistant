@@ -29,8 +29,14 @@ bash scripts/validate/post_upgrade_validate.sh \
 Only proceed with cleanup if validation passes.
 
 ### Step 3: Cleanup Each Deployment
-For each validated deployment, confirm with user then clean up:
+For each validated deployment, confirm with user then clean up.
+⚠️ **Recommend waiting 24-48 hours after switchover before deleting old instances.**
 ```bash
+# Delete deployment metadata only (keeps old instance):
+bash scripts/upgrade/cleanup_blue_green.sh \
+  --deployment-id <deployment_id>
+
+# Delete deployment AND old blue instance (irreversible):
 bash scripts/upgrade/cleanup_blue_green.sh \
   --deployment-id <deployment_id> --delete-source
 ```

@@ -54,19 +54,23 @@ bash scripts/params/check_option_group.sh \
 
 ### Step 4a: Blue/Green Path
 ```bash
-# Create deployment (add --target-option-group only if custom option group was migrated)
+# Create deployment — the script auto-detects custom option groups and uses two-step mode if needed
 bash scripts/upgrade/create_blue_green.sh \
   --instance-id <instance_id> --target-version <target_version> \
-  --target-param-group <param_group> \
-  [--target-option-group <option_group>]
+  --target-param-group <param_group>
 ```
 
-> **Note on custom option groups:** If `--target-option-group` is specified, the tool automatically uses a two-step approach: creates the B/G deployment at the same version with the option group, then upgrades the green instance separately after B/G is ready. This is transparent — no additional user action needed.
+> **Custom option group handling:** If the instance has a custom option group, the script automatically creates a same-version B/G deployment (no version upgrade), then you must upgrade the green instance separately. Check the output JSON for `upgrade_green_required: true`.
 
 ```bash
-# Monitor until AVAILABLE (includes green upgrade if two-step mode)
+# Monitor until AVAILABLE
 bash scripts/upgrade/monitor_blue_green.sh \
   --deployment-id <deployment_id> --poll-interval 60
+
+# If upgrade_green_required=true, upgrade green instance now:
+bash scripts/upgrade/in_place_upgrade.sh \
+  --instance-id <green_instance_id> --target-version <target_version> \
+  --target-param-group <param_group_8.4> --apply-immediately
 
 # Validate green environment (infra + app)
 bash scripts/validate/post_upgrade_validate.sh \
