@@ -597,36 +597,59 @@ upgrade_blue_green() {
     UPGRADE_GREEN=$(echo "$BG_RESULT" | jq -r '.upgrade_green_required // false')
     log_info "$id: Deployment created: $DEPLOYMENT_ID"
     if [[ "$UPGRADE_GREEN" == "true" ]]; then
-      log_info "$id: Two-step mode (custom option group). Green will be upgraded after B/G is ready."
+      log_info "$id: Two-step mode (custom option group). Green will be upgraded as soon as it's available."
     fi
   fi
 
-  log_step "Step 4: Monitoring Blue/Green deployment"
-  "$SCRIPT_DIR/upgrade/monitor_blue_green.sh" --deployment-id "$DEPLOYMENT_ID" ${REGION:+--region "$REGION"} || {
-    log_error "$id: Blue/Green deployment failed"
-    set_status "$id" "FAILED" "B/G deployment failed"
-    return
-  }
-
-  # Step 4b: Upgrade green instance (two-step mode for custom option groups)
+  # Step 4b: Upgrade green instance early (two-step mode for custom option groups)
+  # Green instance becomes available before the full deployment is AVAILABLE.
+  # We can start the version upgrade immediately without waiting for deployment completion.
   if [[ "${UPGRADE_GREEN:-false}" == "true" ]]; then
-    log_step "Step 4b: Upgrading green instance to MySQL $TARGET_VERSION (two-step mode)"
+    log_step "Step 4b: Waiting for green instance to become available, then upgrading to $TARGET_VERSION"
+
     # Get green instance ID from deployment
-    local green_arn
-    green_arn=$(aws rds describe-blue-green-deployments ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
-      --blue-green-deployment-identifier "$DEPLOYMENT_ID" \
-      --query 'BlueGreenDeployments[0].SwitchoverDetails[?TargetMember!=null] | [0].TargetMember' \
-      --output text 2>/dev/null || echo "")
-    local green_instance_id
-    green_instance_id=$(echo "$green_arn" | grep -o '[^:]*$')
+    local green_instance_id=""
+    local wait_start=$(date +%s)
+    while [[ -z "$green_instance_id" || "$green_instance_id" == "None" ]]; do
+      local green_arn
+      green_arn=$(aws rds describe-blue-green-deployments ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+        --blue-green-deployment-identifier "$DEPLOYMENT_ID" \
+        --query 'BlueGreenDeployments[0].SwitchoverDetails[?TargetMember!=null] | [0].TargetMember' \
+        --output text 2>/dev/null || echo "")
+      green_instance_id=$(echo "$green_arn" | grep -o '[^:]*$')
+      if [[ -z "$green_instance_id" || "$green_instance_id" == "None" ]]; then
+        local w_elapsed=$(( $(date +%s) - wait_start ))
+        if [[ "$w_elapsed" -ge 600 ]]; then
+          log_error "$id: Timeout waiting for green instance to appear (600s)"
+          set_status "$id" "FAILED" "Green instance not found"
+          return
+        fi
+        sleep 30
+      fi
+    done
 
-    if [[ -z "$green_instance_id" || "$green_instance_id" == "None" ]]; then
-      log_error "$id: Cannot determine green instance for upgrade"
-      set_status "$id" "FAILED" "Cannot find green instance for two-step upgrade"
-      return
-    fi
+    # Wait for green instance to be available (may still be restoring)
+    log_info "$id: Green instance: $green_instance_id. Waiting for available status..."
+    while true; do
+      local g_status
+      g_status=$(aws rds describe-db-instances ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+        --db-instance-identifier "$green_instance_id" \
+        --query 'DBInstances[0].DBInstanceStatus' --output text 2>/dev/null || echo "unknown")
+      if [[ "$g_status" == "available" ]]; then
+        break
+      fi
+      local w_elapsed=$(( $(date +%s) - wait_start ))
+      if [[ "$w_elapsed" -ge 3600 ]]; then
+        log_error "$id: Timeout waiting for green instance available (3600s)"
+        set_status "$id" "FAILED" "Green instance not available"
+        return
+      fi
+      log_info "  [$green_instance_id] Status: $g_status (${w_elapsed}s)"
+      sleep 30
+    done
 
-    log_info "$id: Upgrading green instance '$green_instance_id' to $TARGET_VERSION"
+    # Upgrade green instance immediately (don't wait for full deployment AVAILABLE)
+    log_info "$id: Green instance available. Starting version upgrade..."
     local modify_args=(--db-instance-identifier "$green_instance_id"
       --engine-version "$TARGET_VERSION" --allow-major-version-upgrade --apply-immediately)
     [[ -n "$target_pg" ]] && modify_args+=(--db-parameter-group-name "$target_pg")
@@ -664,6 +687,14 @@ upgrade_blue_green() {
       sleep 60
     done
   fi
+
+  # Step 4c: Wait for full deployment AVAILABLE (needed for switchover)
+  log_step "Step 4c: Waiting for deployment AVAILABLE"
+  "$SCRIPT_DIR/upgrade/monitor_blue_green.sh" --deployment-id "$DEPLOYMENT_ID" ${REGION:+--region "$REGION"} || {
+    log_error "$id: Blue/Green deployment failed"
+    set_status "$id" "FAILED" "B/G deployment failed"
+    return
+  }
 
   # Step 5: Validate green environment (optional)
   if [[ "$VALIDATE_GREEN" == "true" ]]; then
