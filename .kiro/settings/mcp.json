@@ -9,7 +9,20 @@
         "AWS_DEFAULT_REGION": "us-west-2"
       },
       "disabled": false,
-      "autoApprove": []
+      "autoApprove": [
+        "discover_instances",
+        "run_precheck",
+        "batch_precheck",
+        "migrate_params",
+        "prepare_param_group",
+        "check_option_group",
+        "generate_config",
+        "create_blue_green",
+        "monitor_blue_green",
+        "pre_switchover_check",
+        "validate_upgrade",
+        "app_validate"
+      ]
     }
   }
 }
