@@ -100,7 +100,10 @@ When guiding a user through an upgrade, follow this sequence and suggest the nex
    → ⚠️ IF create_blue_green returned upgrade_green_required=true:
      MUST run in_place_upgrade on green instance BEFORE proceeding to step 6b
      (green is still on 8.0 at this point — it needs version upgrade)
-6b. validate_upgrade + app_validate (on green) → verify green environment health before switchover
+6b. validate_upgrade (on green) → verify green instance version and status
+   → ⚠️ PAUSE HERE and ask user: "Green environment is ready. Do you want to run application validation (app_validate) before proceeding to switchover?"
+   - If yes → run app_validate on green endpoint, report results
+   - If no → proceed to step 7
 7. pre_switchover_check → all checks must PASS before proceeding
    → DO NOT run this step if green version has not been upgraded yet
 8. switchover → ⚠️ REQUIRES EXPLICIT USER CONFIRMATION (see Guardrails below)
