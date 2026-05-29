@@ -271,11 +271,20 @@ fi
 if [[ -n "$TARGET_OPTION_GROUP" ]]; then
   MODIFY_ARGS+=(--option-group-name "$TARGET_OPTION_GROUP")
 else
-  # Auto-detect: if instance uses a custom option group, RDS may require specifying a target
+  # Auto-detect: if instance uses a custom option group, RDS requires specifying a target
   CURRENT_OG=$(echo "$INST_JSON" | jq -r '.DBInstances[0].OptionGroupMemberships[0].OptionGroupName // empty')
   if [[ -n "$CURRENT_OG" && "$CURRENT_OG" != default:* && "$CURRENT_OG" != "None" ]]; then
-    echo "WARNING: Instance uses custom option group '$CURRENT_OG' but no --target-option-group specified." >&2
-    echo "  RDS may reject the upgrade. Consider specifying --target-option-group." >&2
+    # Check if a migrated 8.4 option group exists (convention: <name>-mysql84)
+    og_84="${CURRENT_OG}-mysql84"
+    if aws rds describe-option-groups ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+      --option-group-name "$og_84" > /dev/null 2>&1; then
+      echo "Auto-detected migrated option group: $og_84" >&2
+      MODIFY_ARGS+=(--option-group-name "$og_84")
+    else
+      echo "WARNING: Instance uses custom option group '$CURRENT_OG' but no migrated 8.4 group found." >&2
+      echo "  Falling back to default:mysql-8.4. Run check_option_group.sh first to migrate." >&2
+      MODIFY_ARGS+=(--option-group-name "default:mysql-8.4")
+    fi
   fi
 fi
 
