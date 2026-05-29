@@ -48,8 +48,6 @@ if type audit_init &>/dev/null; then
   audit_log "ACTION" "Cleanup deployment: $DEPLOYMENT_ID, delete_source: $DELETE_SOURCE"
 fi
 
-DELETE_ARGS=()
-
 if ! RESULT=$(aws rds delete-blue-green-deployment \
   ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --blue-green-deployment-identifier "$DEPLOYMENT_ID" \
@@ -67,7 +65,8 @@ if [[ "$DELETE_SOURCE" == "true" ]]; then
   OLD_INSTANCE_ID=$(echo "$OLD_SOURCE" | grep -o '[^:]*$')
 
   if [[ -n "$OLD_INSTANCE_ID" && "$OLD_INSTANCE_ID" != "None" ]]; then
-    echo "Deleting old blue instance: $OLD_INSTANCE_ID ..." >&2
+    echo "WARNING: Deleting old blue instance '$OLD_INSTANCE_ID' with --skip-final-snapshot." >&2
+    echo "  This is irreversible. The RDS automatic pre-upgrade snapshot is still available for recovery." >&2
     aws rds delete-db-instance \
       ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
       --db-instance-identifier "$OLD_INSTANCE_ID" \

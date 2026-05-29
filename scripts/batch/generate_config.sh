@@ -43,9 +43,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# --- Validate inputs ---
+if [[ ! "$CONCURRENCY" =~ ^[0-9]+$ ]] || [[ "$CONCURRENCY" -lt 1 ]]; then
+  echo "ERROR: --concurrency must be a positive integer" >&2; exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-REGION_ARGS=""
-[[ -n "$REGION" ]] && REGION_ARGS="--region $REGION"
+REGION_ARGS=()
+[[ -n "$REGION" ]] && REGION_ARGS=(--region "$REGION")
 
 # --- Discover instances ---
 DISCOVER_ARGS=(--version-prefix "$VERSION_PREFIX" --json)
@@ -64,13 +69,13 @@ fi
 
 # --- Discover clusters ---
 CLUSTERS=$(aws rds describe-db-clusters \
-  $REGION_ARGS \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --query 'DBClusters[?Engine==`mysql`].[DBClusterIdentifier,EngineVersion]' \
   --output json 2>/dev/null || echo "[]")
 
 # Build a set of cluster member instance IDs
 CLUSTER_MEMBERS=$(aws rds describe-db-clusters \
-  $REGION_ARGS \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --query 'DBClusters[?Engine==`mysql`].DBClusterMembers[].DBInstanceIdentifier' \
   --output json 2>/dev/null || echo "[]")
 
@@ -87,7 +92,7 @@ generate() {
   # Track which clusters we've already added
   declare -A SEEN_CLUSTERS
 
-  echo "$INSTANCES" | jq -c '.[]' | while IFS= read -r inst; do
+  while IFS= read -r inst; do
     id=$(echo "$inst" | jq -r '.instance_id')
     pg=$(echo "$inst" | jq -r '.parameter_group')
     replicas=$(echo "$inst" | jq -r '.read_replicas[]?' 2>/dev/null)
@@ -103,7 +108,7 @@ generate() {
     if [[ "$is_cluster_member" -gt 0 ]]; then
       # Find the cluster this instance belongs to
       cluster_id=$(aws rds describe-db-instances \
-        $REGION_ARGS \
+        ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
         --db-instance-identifier "$id" \
         --query 'DBInstances[0].DBClusterIdentifier' \
         --output text 2>/dev/null || echo "")
@@ -148,7 +153,7 @@ generate() {
     fi
 
     echo "    strategy: \"${strategy}\"${comment}"
-  done
+  done < <(echo "$INSTANCES" | jq -c '.[]')
 }
 
 if [[ -n "$OUTPUT_FILE" ]]; then
