@@ -123,6 +123,12 @@ cp scripts/validate/app_validate_template.sql scripts/validate/app_validate.sql
 ### Step 6: Cleanup (Blue/Green only)
 After confirming upgrade is successful (recommend waiting 24-48 hours):
 ```bash
+# Delete deployment metadata only (keeps old blue instance — recommended):
+bash scripts/upgrade/cleanup_blue_green.sh \
+  --deployment-id <deployment_id>
+
+# Delete deployment AND old blue instance (irreversible — only after 24-48h confirmation):
 bash scripts/upgrade/cleanup_blue_green.sh \
   --deployment-id <deployment_id> --delete-source
 ```
+⚠️ Default behavior: only delete deployment metadata, preserve old blue instance. Always recommend this first.

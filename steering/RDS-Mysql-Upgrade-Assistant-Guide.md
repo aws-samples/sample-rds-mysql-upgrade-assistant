@@ -130,6 +130,7 @@ The following operations are **irreversible** — you MUST:
 |-----------|------|
 | `switchover` | One-way — no reverse switchover. Data written after switchover cannot be rolled back to blue. |
 | `cleanup_blue_green --delete-source` | Permanently deletes the old blue instance. No recovery possible. |
+| `cleanup_blue_green` (without --delete-source) | Only deletes B/G deployment metadata. Old blue instance is preserved. Safe. |
 | `in_place_upgrade` | Causes downtime. Irreversible — rollback requires snapshot restore to a new instance. |
 | `in_place_upgrade` (Multi-AZ DB Cluster) | All cluster members go offline simultaneously during upgrade. |
 
