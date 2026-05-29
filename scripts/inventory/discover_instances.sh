@@ -78,6 +78,16 @@ RESULT=$(echo "$RAW" | jq --arg prefix "$VERSION_PREFIX" --arg region "$EFFECTIV
      }
   ]')
 
+# --- Check for active Blue/Green deployments ---
+BG_DEPLOYMENTS=$(aws rds describe-blue-green-deployments \
+  ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+  --query 'BlueGreenDeployments[?Status!=`DELETED` && Status!=`DELETING`].Source' \
+  --output json 2>/dev/null || echo "[]")
+
+# Filter out instances that are already in an active B/G deployment
+RESULT=$(echo "$RESULT" | jq --argjson bg "$BG_DEPLOYMENTS" '
+  [.[] | select(. as $inst | $bg | map(contains($inst.instance_id)) | any | not)]')
+
 # --- Apply tag filters ---
 for tag_filter in ${TAGS[@]+"${TAGS[@]}"}; do
   KEY="${tag_filter%%=*}"
