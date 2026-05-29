@@ -165,7 +165,7 @@ fi
 if aws rds describe-option-groups \
   ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
   --option-group-name "$TARGET_OG" > /dev/null 2>&1; then
-  echo "Target option group '$TARGET_OG' already exists. Skipping creation." >&2
+  echo "Target option group '$TARGET_OG' already exists. Skipping migration." >&2
 else
   aws rds create-option-group \
     ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
@@ -178,21 +178,20 @@ else
     exit 1
   }
   echo "Created option group: $TARGET_OG" >&2
-fi
 
-# --- Add options to target group (if any) ---
-if [[ "$MIGRATE_COUNT" -gt 0 ]]; then
-  for opt_json in $(echo "$MIGRATE_OPTIONS" | jq -c '.[]'); do
-    opt_name=$(echo "$opt_json" | jq -r '.OptionName')
+  # --- Add options to target group (only on fresh creation) ---
+  if [[ "$MIGRATE_COUNT" -gt 0 ]]; then
+    for opt_json in $(echo "$MIGRATE_OPTIONS" | jq -c '.[]'); do
+      opt_name=$(echo "$opt_json" | jq -r '.OptionName')
 
-    # Skip if option name is empty
-    if [[ -z "$opt_name" || "$opt_name" == "null" ]]; then
-      continue
-    fi
+      # Skip if option name is empty
+      if [[ -z "$opt_name" || "$opt_name" == "null" ]]; then
+        continue
+      fi
 
-    # Reconstruct option settings from source (filter out empty Name/Value)
-    OPTIONS_SPEC=$(echo "$opt_json" | jq -c \
-      '[{OptionName: .OptionName, OptionSettings: [(.OptionSettings // [])[] | select(.Name != "" and .Name != null and .Value != null) | {Name: .Name, Value: .Value}]}]')
+      # Reconstruct option settings from source (filter out empty Name/Value)
+      OPTIONS_SPEC=$(echo "$opt_json" | jq -c \
+        '[{OptionName: .OptionName, OptionSettings: [(.OptionSettings // [])[] | select(.Name != "" and .Name != null and .Value != null) | {Name: .Name, Value: .Value}]}]')
 
     aws rds modify-option-group \
       ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
@@ -204,7 +203,8 @@ if [[ "$MIGRATE_COUNT" -gt 0 ]]; then
       continue
     }
     echo "  Added option: $opt_name (with settings)" >&2
-  done
+    done
+  fi
 fi
 
 if [[ "$JSON_OUTPUT" == "true" ]]; then
