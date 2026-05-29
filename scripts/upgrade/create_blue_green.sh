@@ -138,7 +138,7 @@ if [[ "$TWO_STEP" == "false" ]]; then
   BG_ARGS+=(--target-engine-version "$TARGET_VERSION")
 fi
 
-# Note: IS_CLUSTER is always false here (clusters exit at line 97)
+# Clusters are rejected earlier in the script (B/G not supported), so only instances reach here
 if [[ "$TWO_STEP" == "false" ]]; then
   # One-step: use the 8.4 target param group
   [[ -n "$TARGET_PARAM_GROUP" ]] && BG_ARGS+=(--target-db-parameter-group-name "$TARGET_PARAM_GROUP")
