@@ -27,6 +27,7 @@ TARGET_VERSION="8.4.9"
 TARGET_PARAM_FAMILY="mysql8.4"
 CONCURRENCY=5
 SECRET_PREFIX=""
+SECRET_ID=""
 OUTPUT_FILE=""
 TAGS=()
 
@@ -37,6 +38,7 @@ while [[ $# -gt 0 ]]; do
     --target-version) TARGET_VERSION="$2"; shift 2 ;;
     --concurrency) CONCURRENCY="$2"; shift 2 ;;
     --secret-prefix) SECRET_PREFIX="$2"; shift 2 ;;
+    --secret-id) SECRET_ID="$2"; shift 2 ;;
     --output) OUTPUT_FILE="$2"; shift 2 ;;
     --tag) TAGS+=("$2"); shift 2 ;;
     *) echo "Unknown option: $1"; exit 1 ;;
@@ -117,7 +119,9 @@ generate() {
         SEEN_CLUSTERS[$cluster_id]=1
         echo "  - instance_id: \"$cluster_id\""
         echo "    strategy: \"in_place\"  # Multi-AZ DB Cluster (B/G not supported)"
-        if [[ -n "$SECRET_PREFIX" ]]; then
+        if [[ -n "$SECRET_ID" ]]; then
+          echo "    secret_id: \"${SECRET_ID}\""
+        elif [[ -n "$SECRET_PREFIX" ]]; then
           echo "    secret_id: \"${SECRET_PREFIX}${cluster_id}\""
         fi
       fi
@@ -144,7 +148,9 @@ generate() {
 
     echo "  - instance_id: \"$id\""
 
-    if [[ -n "$SECRET_PREFIX" ]]; then
+    if [[ -n "$SECRET_ID" ]]; then
+      echo "    secret_id: \"${SECRET_ID}\""
+    elif [[ -n "$SECRET_PREFIX" ]]; then
       echo "    secret_id: \"${SECRET_PREFIX}${id}\""
     fi
 

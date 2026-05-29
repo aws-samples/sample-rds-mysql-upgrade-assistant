@@ -24,6 +24,14 @@ Report the number of instances found and their details.
 
 ### Step 2: Generate Batch Config
 ```bash
+# With shared secret (all instances use same credentials)
+bash scripts/batch/generate_config.sh \
+  --target-version <target_version> \
+  --secret-id <secret_id> \
+  --concurrency <concurrency> \
+  --output batch_config.yaml
+
+# Or with per-instance secrets (prefix + instance_id)
 bash scripts/batch/generate_config.sh \
   --target-version <target_version> \
   --secret-prefix <secret_prefix> \

@@ -202,14 +202,19 @@ def register_tools(mcp):
         region: str = "",
         version_prefix: str = "8.0",
         secret_prefix: str = "",
+        secret_id: str = "",
         concurrency: int = 5,
         output: str = "",
     ) -> str:
-        """Generate batch upgrade config from discovered instances."""
+        """Generate batch upgrade config from discovered instances.
+        Use secret_id for a shared secret across all instances,
+        or secret_prefix to auto-generate per-instance secret names."""
         args = ["--version-prefix", version_prefix]
         if region:
             args += ["--region", region]
-        if secret_prefix:
+        if secret_id:
+            args += ["--secret-id", secret_id]
+        elif secret_prefix:
             args += ["--secret-prefix", secret_prefix]
         args += ["--concurrency", str(concurrency)]
         if output:

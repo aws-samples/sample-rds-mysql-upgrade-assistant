@@ -195,7 +195,12 @@ Auto-generate a batch config from your current instances:
 # Generate config with auto-detected strategies
 ./scripts/batch/generate_config.sh --output batch_config.yaml
 
-# With Secrets Manager prefix and tag filter
+# With shared secret (same credentials for all instances)
+./scripts/batch/generate_config.sh \
+  --secret-id "rds/shared/admin" \
+  --output batch_config.yaml
+
+# With per-instance secrets (prefix + instance_id)
 ./scripts/batch/generate_config.sh \
   --secret-prefix "prod/rds/" \
   --tag "env=production" \
