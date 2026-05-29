@@ -583,8 +583,8 @@ upgrade_blue_green() {
     [[ -n "$target_og" ]] && bg_args+=(--target-option-group "$target_og")
     [[ -n "$REGION" ]] && bg_args+=(--region "$REGION")
 
-    BG_RESULT=$("$SCRIPT_DIR/upgrade/create_blue_green.sh" "${bg_args[@]}" 2>&1) || {
-      log_error "$id: Blue/Green creation failed: $BG_RESULT"
+    BG_RESULT=$("$SCRIPT_DIR/upgrade/create_blue_green.sh" "${bg_args[@]}") || {
+      log_error "$id: Blue/Green creation failed"
       log_warn  "$id: Consider using in-place upgrade instead (causes downtime):"
       log_warn  "  ./scripts/upgrade/in_place_upgrade.sh --instance-id $id --target-version $TARGET_VERSION --apply-immediately"
       log_warn  "$id: Common reasons: cascading replicas, CloudFormation-managed, or unsupported configuration."
