@@ -115,7 +115,7 @@ After each step completes successfully, suggest the next step with a brief expla
 
 > ⚠️ **CRITICAL**: Never call `create_blue_green` with `--target-version` if the instance has a custom option group. Always check option group status (step 3) BEFORE creating the B/G deployment. If custom option group exists, omit `--target-version` to create a same-version B/G, then upgrade the green instance separately.
 
-> ⚠️ **GREEN INSTANCES**: If `discover_instances` returns an instance with `blue_green_role: "green"` and `upgrade_strategy: "in_place"`, it is already a Green environment in an existing B/G deployment. NEVER call `create_blue_green` on it. Use `upgrade_green_instance` (or `in_place_upgrade`) to upgrade it directly to the target version.
+> ⚠️ **GREEN INSTANCES**: If `discover_instances` returns an instance with `blue_green_role: "green"` and `upgrade_strategy: "in_place"`, it is already a Green environment in an existing B/G deployment. NEVER call `create_blue_green` on it. Use `upgrade_green_instance` (or `in_place_upgrade`) to upgrade it directly to the target version. **Always check the green instance's engine version before suggesting switchover — if it's still on 8.0, it needs upgrading first.**
 
 > ⚠️ **CREDENTIALS**: Always ask the user for `secret_id` before calling any tool that requires database credentials (`run_precheck`, `batch_precheck`, `app_validate`). Do NOT guess or auto-discover secrets from Secrets Manager. If the user hasn't provided one, ask them explicitly.
 
