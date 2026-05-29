@@ -212,7 +212,7 @@ Review and edit the generated config, then run:
 
 ```bash
 ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --dry-run  # validate first
-./scripts/batch/batch_upgrade.sh --config batch_config.yaml --concurrency 3
+./scripts/batch/batch_upgrade.sh --config batch_config.yaml
 ```
 
 The batch orchestrator also performs runtime auto-detection: if an instance belongs to a Multi-AZ DB Cluster, it automatically overrides the strategy to `in_place`, upgrades at the cluster level, and skips other members of the same cluster.
@@ -370,7 +370,8 @@ For each instance, the tool follows 10 steps:
 2. **Precheck** — Run 19-check compatibility analysis (`mysql_precheck_run.sh`)
 3. **Migrate params & options** — Create 8.4 parameter group from 8.0 (`migrate_param_group.sh`), migrate custom option groups (`check_option_group.sh`)
 4. **Create B/G** — Create Blue/Green deployment (`create_blue_green.sh`)
-   - **Note:** Blue/Green is not supported for instances with cross-Region read replicas or Multi-AZ DB Clusters. Use in-place upgrade for those.
+   - **Note:** Blue/Green is not supported for Multi-AZ DB Clusters, instances with cross-Region read replicas, cascading read replicas, or CloudFormation-managed instances. Use in-place upgrade for those. See [B/G limitations](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments.html#blue-green-deployments-limitations).
+   - **Custom option groups:** The script auto-detects custom option groups and uses a two-step approach (create same-version B/G, then upgrade green separately).
 5. **Monitor** — Wait for green environment ready (`monitor_blue_green.sh`)
 6. **Validate green** — Run infra + app validation against green environment (`post_upgrade_validate.sh`, `app_validate_run.sh`)
 7. **Pre-switchover check** — Verify guardrails: deployment status, replication health, instance availability (`pre_switchover_check.sh`)
