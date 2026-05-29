@@ -258,10 +258,25 @@ MODIFY_ARGS=(
 
 if [[ -n "$TARGET_PARAM_GROUP" ]]; then
   MODIFY_ARGS+=(--db-parameter-group-name "$TARGET_PARAM_GROUP")
+else
+  # Auto-detect: if instance uses a custom param group, RDS requires specifying a target
+  CURRENT_PG=$(echo "$INST_JSON" | jq -r '.DBInstances[0].DBParameterGroups[0].DBParameterGroupName // empty')
+  if [[ -n "$CURRENT_PG" && "$CURRENT_PG" != default.* ]]; then
+    echo "WARNING: Instance uses custom parameter group '$CURRENT_PG' but no --target-param-group specified." >&2
+    echo "  Using default.mysql8.4 as target. To use a custom 8.4 group, specify --target-param-group." >&2
+    MODIFY_ARGS+=(--db-parameter-group-name "default.mysql8.4")
+  fi
 fi
 
 if [[ -n "$TARGET_OPTION_GROUP" ]]; then
   MODIFY_ARGS+=(--option-group-name "$TARGET_OPTION_GROUP")
+else
+  # Auto-detect: if instance uses a custom option group, RDS may require specifying a target
+  CURRENT_OG=$(echo "$INST_JSON" | jq -r '.DBInstances[0].OptionGroupMemberships[0].OptionGroupName // empty')
+  if [[ -n "$CURRENT_OG" && "$CURRENT_OG" != default:* && "$CURRENT_OG" != "None" ]]; then
+    echo "WARNING: Instance uses custom option group '$CURRENT_OG' but no --target-option-group specified." >&2
+    echo "  RDS may reject the upgrade. Consider specifying --target-option-group." >&2
+  fi
 fi
 
 if [[ "$APPLY_IMMEDIATELY" == "true" ]]; then
