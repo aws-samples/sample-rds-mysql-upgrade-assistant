@@ -79,14 +79,28 @@ RESULT=$(echo "$RAW" | jq --arg prefix "$VERSION_PREFIX" --arg region "$EFFECTIV
   ]')
 
 # --- Check for active Blue/Green deployments ---
-BG_DEPLOYMENTS=$(aws rds describe-blue-green-deployments \
+# Get both source (blue) and target (green) ARNs from active deployments
+BG_INFO=$(aws rds describe-blue-green-deployments \
   ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
-  --query 'BlueGreenDeployments[?Status!=`DELETED` && Status!=`DELETING`].Source' \
+  --query 'BlueGreenDeployments[?Status!=`DELETED` && Status!=`DELETING`].{Source:Source,Targets:SwitchoverDetails[].TargetMember}' \
   --output json 2>/dev/null || echo "[]")
 
-# Filter out instances that are already in an active B/G deployment
-RESULT=$(echo "$RESULT" | jq --argjson bg "$BG_DEPLOYMENTS" '
-  [.[] | select(. as $inst | $bg | map(contains($inst.instance_id)) | any | not)]')
+# Build lists of source ARNs (to skip) and target ARNs (to mark as green)
+BG_SOURCES=$(echo "$BG_INFO" | jq '[.[].Source // empty]')
+BG_TARGETS=$(echo "$BG_INFO" | jq '[.[].Targets[]? // empty]')
+
+# Filter out blue (source) instances that already have an active B/G deployment
+# Mark green (target) instances with blue_green_role=green
+RESULT=$(echo "$RESULT" | jq --argjson sources "$BG_SOURCES" --argjson targets "$BG_TARGETS" '
+  [.[] |
+    if (. as $inst | $sources | map(contains($inst.instance_id)) | any) then
+      empty
+    elif (. as $inst | $targets | map(contains($inst.instance_id)) | any) then
+      . + {blue_green_role: "green", upgrade_strategy: "in_place"}
+    else
+      . + {blue_green_role: null, upgrade_strategy: null}
+    end
+  ]')
 
 # --- Apply tag filters ---
 for tag_filter in ${TAGS[@]+"${TAGS[@]}"}; do
