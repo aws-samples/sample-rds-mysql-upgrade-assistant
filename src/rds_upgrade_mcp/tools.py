@@ -316,7 +316,7 @@ def register_tools(mcp):
         not production. Use this after create_blue_green returns
         upgrade_green_required=true and the green instance is available."""
         args = ["--instance-id", green_instance_id, "--target-version", target_version,
-                "--apply-immediately", "--allow-major-version-upgrade"]
+                "--apply-immediately"]
         if target_param_group:
             args += ["--target-param-group", target_param_group]
         if region:
