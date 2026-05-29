@@ -43,6 +43,9 @@ audit_init() {
 }
 
 audit_log() {
+  # Skip if audit_init was not called (e.g., MCP subprocess path issues)
+  [[ -z "$AUDIT_LOG_FILE" ]] && return 0
+
   local level="$1"
   shift
   local message="$*"
@@ -59,6 +62,9 @@ audit_log() {
 }
 
 audit_finish() {
+  # Skip if audit_init was not called
+  [[ -z "$AUDIT_LOG_FILE" ]] && return 0
+
   local exit_code="${1:-$?}"
   local elapsed=$(( $(date +%s) - ${AUDIT_START_TIME:-$(date +%s)} ))
 
