@@ -185,9 +185,14 @@ if [[ "$MIGRATE_COUNT" -gt 0 ]]; then
   for opt_json in $(echo "$MIGRATE_OPTIONS" | jq -c '.[]'); do
     opt_name=$(echo "$opt_json" | jq -r '.OptionName')
 
-    # Reconstruct option settings from source
+    # Skip if option name is empty
+    if [[ -z "$opt_name" || "$opt_name" == "null" ]]; then
+      continue
+    fi
+
+    # Reconstruct option settings from source (filter out empty Name/Value)
     OPTIONS_SPEC=$(echo "$opt_json" | jq -c \
-      '[{OptionName: .OptionName, OptionSettings: [(.OptionSettings // [])[] | {Name: .Name, Value: .Value}]}]')
+      '[{OptionName: .OptionName, OptionSettings: [(.OptionSettings // [])[] | select(.Name != "" and .Name != null and .Value != null) | {Name: .Name, Value: .Value}]}]')
 
     aws rds modify-option-group \
       ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
