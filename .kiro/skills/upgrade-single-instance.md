@@ -68,6 +68,7 @@ bash scripts/upgrade/monitor_blue_green.sh \
   --deployment-id <deployment_id> --poll-interval 60
 
 # If upgrade_green_required=true, upgrade green instance now:
+# Use upgrade_green_instance MCP tool (auto-approved, safe for staging)
 bash scripts/upgrade/in_place_upgrade.sh \
   --instance-id <green_instance_id> --target-version <target_version> \
   --target-param-group <param_group_8.4> --apply-immediately

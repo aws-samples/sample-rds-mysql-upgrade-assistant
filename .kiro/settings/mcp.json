@@ -20,6 +20,7 @@
         "create_blue_green",
         "monitor_blue_green",
         "pre_switchover_check",
+        "upgrade_green_instance",
         "validate_upgrade",
         "app_validate"
       ]

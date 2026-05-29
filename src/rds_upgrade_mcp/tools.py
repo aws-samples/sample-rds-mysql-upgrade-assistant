@@ -305,6 +305,25 @@ def register_tools(mcp):
         return _run("upgrade/in_place_upgrade.sh", args, timeout=7200)
 
     @mcp.tool()
+    async def upgrade_green_instance(
+        green_instance_id: str,
+        target_version: str = "8.4.9",
+        target_param_group: str = "",
+        region: str = "",
+    ) -> dict:
+        """Upgrade the green instance in a two-step Blue/Green deployment.
+        Safe to auto-approve — only affects the green (staging) environment,
+        not production. Use this after create_blue_green returns
+        upgrade_green_required=true and the green instance is available."""
+        args = ["--instance-id", green_instance_id, "--target-version", target_version,
+                "--apply-immediately", "--allow-major-version-upgrade"]
+        if target_param_group:
+            args += ["--target-param-group", target_param_group]
+        if region:
+            args += ["--region", region]
+        return _run("upgrade/in_place_upgrade.sh", args, timeout=7200)
+
+    @mcp.tool()
     async def cleanup_blue_green(
         deployment_id: str,
         delete_source: bool = False,
