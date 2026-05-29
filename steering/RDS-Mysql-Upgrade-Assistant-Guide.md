@@ -97,8 +97,12 @@ When guiding a user through an upgrade, follow this sequence and suggest the nex
    - If instance has custom option group → MUST use two-step B/G (no --target-version)
    - If instance is Multi-AZ DB Cluster → MUST use in_place_upgrade
 6. monitor_blue_green → poll until AVAILABLE
+   → ⚠️ IF create_blue_green returned upgrade_green_required=true:
+     MUST run in_place_upgrade on green instance BEFORE proceeding to step 6b
+     (green is still on 8.0 at this point — it needs version upgrade)
 6b. validate_upgrade + app_validate (on green) → verify green environment health before switchover
 7. pre_switchover_check → all checks must PASS before proceeding
+   → DO NOT run this step if green version has not been upgraded yet
 8. switchover → ⚠️ REQUIRES EXPLICIT USER CONFIRMATION (see Guardrails below)
 9. validate_upgrade (connectivity check) → confirm endpoint reachable after switchover
 10. cleanup_blue_green → ⚠️ REQUIRES EXPLICIT USER CONFIRMATION
