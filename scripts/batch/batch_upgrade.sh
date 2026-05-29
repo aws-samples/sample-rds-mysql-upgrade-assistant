@@ -377,6 +377,14 @@ upgrade_instance() {
   local source_pg="${INSTANCE_PARAM_GROUPS[$idx]}"
   local strategy="${INSTANCE_STRATEGIES[$idx]}"
 
+  # Auto-detect Green instance (B/G two-step) — force in_place
+  if [[ "$id" == *-green-* ]]; then
+    if [[ "$strategy" == "blue_green" ]]; then
+      log_warn "$id: Green instance detected. Forcing in_place (already in B/G deployment)."
+      strategy="in_place"
+    fi
+  fi
+
   # Auto-detect Multi-AZ DB Cluster — force in_place (Blue/Green not supported)
   local cluster_id
   cluster_id=$(aws rds describe-db-instances ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \

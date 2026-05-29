@@ -132,6 +132,12 @@ generate() {
     strategy="blue_green"
     comment=""
 
+    # Green instances (B/G two-step) must use in_place
+    if [[ "$id" == *-green-* ]]; then
+      strategy="in_place"
+      comment=" # B/G green instance (needs version upgrade)"
+    fi
+
     # Check for cross-region replicas
     has_cross_region=false
     for rep in $replicas; do
