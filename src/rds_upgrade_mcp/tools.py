@@ -309,6 +309,7 @@ def register_tools(mcp):
         green_instance_id: str,
         target_version: str = "8.4.9",
         target_param_group: str = "",
+        target_option_group: str = "",
         region: str = "",
     ) -> dict:
         """Upgrade the green instance in a two-step Blue/Green deployment.
@@ -319,6 +320,8 @@ def register_tools(mcp):
                 "--apply-immediately"]
         if target_param_group:
             args += ["--target-param-group", target_param_group]
+        if target_option_group:
+            args += ["--target-option-group", target_option_group]
         if region:
             args += ["--region", region]
         return _run("upgrade/in_place_upgrade.sh", args, timeout=7200)
