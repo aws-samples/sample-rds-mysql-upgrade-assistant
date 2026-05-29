@@ -128,14 +128,14 @@ parse_config_yaml() {
         INSTANCE_PARAM_GROUPS+=("$current_pg")
         INSTANCE_STRATEGIES+=("$current_strategy")
       fi
-      current_id=$(echo "$line" | sed 's/.*instance_id:[[:space:]]*//' | tr -d '"'"'")
+      current_id=$(echo "$line" | sed 's/.*instance_id:[[:space:]]*//' | sed 's/#.*//' | tr -d '"'"'" | sed 's/[[:space:]]*$//')
       current_secret="" current_pg="" current_strategy="blue_green"
     elif [[ "$line" =~ "secret_id:" ]]; then
-      current_secret=$(echo "$line" | sed 's/.*secret_id:[[:space:]]*//' | tr -d '"'"'")
+      current_secret=$(echo "$line" | sed 's/.*secret_id:[[:space:]]*//' | sed 's/#.*//' | tr -d '"'"'" | sed 's/[[:space:]]*$//')
     elif [[ "$line" =~ "source_param_group:" ]]; then
-      current_pg=$(echo "$line" | sed 's/.*source_param_group:[[:space:]]*//' | tr -d '"'"'")
+      current_pg=$(echo "$line" | sed 's/.*source_param_group:[[:space:]]*//' | sed 's/#.*//' | tr -d '"'"'" | sed 's/[[:space:]]*$//')
     elif [[ "$line" =~ "strategy:" ]]; then
-      current_strategy=$(echo "$line" | sed 's/.*strategy:[[:space:]]*//' | tr -d '"'"'")
+      current_strategy=$(echo "$line" | sed 's/.*strategy:[[:space:]]*//' | sed 's/#.*//' | tr -d '"'"'" | sed 's/[[:space:]]*$//')
     fi
   done < "$config"
 

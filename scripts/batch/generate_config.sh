@@ -139,7 +139,7 @@ generate() {
 
     if [[ "$has_cross_region" == "true" ]]; then
       strategy="in_place"
-      comment="  # cross-region replica (B/G not supported)"
+      comment=" # cross-region replica (B/G not supported)"
     fi
 
     echo "  - instance_id: \"$id\""
