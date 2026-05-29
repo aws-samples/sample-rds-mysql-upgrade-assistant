@@ -12,7 +12,7 @@
 #   audit_finish 0
 # ============================================================
 
-AUDIT_LOG_DIR="${AUDIT_LOG_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/logs}"
+AUDIT_LOG_DIR="${AUDIT_LOG_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../.." 2>/dev/null && pwd || pwd)/logs}"
 AUDIT_LOG_FILE=""
 AUDIT_SCRIPT_NAME=""
 AUDIT_START_TIME=""
@@ -60,7 +60,7 @@ audit_log() {
 
 audit_finish() {
   local exit_code="${1:-$?}"
-  local elapsed=$(( $(date +%s) - AUDIT_START_TIME ))
+  local elapsed=$(( $(date +%s) - ${AUDIT_START_TIME:-$(date +%s)} ))
 
   {
     echo "============================================================"
