@@ -123,8 +123,22 @@ if [[ -n "$TARGET_OPTION_GROUP" || -z "$TARGET_VERSION" ]]; then
   TWO_STEP=true
 fi
 
+# Auto-detect multi-hop upgrade (5.7 → 8.4): must go through 8.0 first
+MULTI_HOP=false
+INTERMEDIATE_VERSION=""
+if [[ "$IS_CLUSTER" == "false" && -n "$TARGET_VERSION" ]]; then
+  SOURCE_VERSION=$(echo "$INST_JSON" | jq -r '.DBInstances[0].EngineVersion // empty')
+  if [[ "$SOURCE_VERSION" == 5.7.* && "$TARGET_VERSION" == 8.4.* ]]; then
+    MULTI_HOP=true
+    INTERMEDIATE_VERSION="8.0.39"  # Latest 8.0 for intermediate step
+    TWO_STEP=true
+    echo "Multi-hop upgrade detected: $SOURCE_VERSION → 8.0 → $TARGET_VERSION" >&2
+    echo "B/G will upgrade to $INTERMEDIATE_VERSION first, then green upgraded to $TARGET_VERSION." >&2
+  fi
+fi
+
 if [[ "$TWO_STEP" == "true" ]]; then
-  echo "Two-step B/G mode: create same-version deployment, then upgrade green separately." >&2
+  echo "Two-step B/G mode: create deployment, then upgrade green separately." >&2
 fi
 
 BG_ARGS=(
@@ -133,9 +147,12 @@ BG_ARGS=(
   --source "$SOURCE_ARN"
 )
 
-# Only include target engine version if NOT two-step (no custom option group)
+# Only include target engine version if NOT two-step, or use intermediate version for multi-hop
 if [[ "$TWO_STEP" == "false" ]]; then
   BG_ARGS+=(--target-engine-version "$TARGET_VERSION")
+elif [[ "$MULTI_HOP" == "true" ]]; then
+  # Multi-hop (5.7→8.4): B/G upgrades to 8.0, green then upgraded to 8.4 separately
+  BG_ARGS+=(--target-engine-version "$INTERMEDIATE_VERSION")
 fi
 
 # Clusters are rejected earlier in the script (B/G not supported), so only instances reach here
@@ -162,14 +179,17 @@ fi
 DEPLOYMENT_ID=$(echo "$RESULT" | jq -r '.BlueGreenDeployment.BlueGreenDeploymentIdentifier')
 
 # Two-step: output includes upgrade_green_required flag
-echo "$RESULT" | jq --arg two_step "$TWO_STEP" '{
+echo "$RESULT" | jq --arg two_step "$TWO_STEP" --arg multi_hop "$MULTI_HOP" \
+  --arg intermediate "${INTERMEDIATE_VERSION:-}" '{
   deployment_id: .BlueGreenDeployment.BlueGreenDeploymentIdentifier,
   deployment_name: .BlueGreenDeployment.BlueGreenDeploymentName,
   status: .BlueGreenDeployment.Status,
   source_instance: "'"$INSTANCE_ID"'",
   target_version: "'"$TARGET_VERSION"'",
+  intermediate_version: (if $multi_hop == "true" then $intermediate else null end),
   target_param_group: "'"$TARGET_PARAM_GROUP"'",
   target_option_group: "'"${TARGET_OPTION_GROUP:-none}"'",
   upgrade_green_required: ($two_step == "true"),
+  multi_hop: ($multi_hop == "true"),
   created_at: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
 }'

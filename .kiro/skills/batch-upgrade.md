@@ -14,6 +14,11 @@ Automate the full batch upgrade workflow from discovery to completion.
 - `secret_prefix` (optional) — Secrets Manager prefix for credentials
 - `concurrency` — Number of parallel upgrades (default: 5, recommended: 5–10 for Blue/Green)
 
+## Supported Upgrade Paths
+- **MySQL 8.0 → 8.4** — Standard B/G or in-place
+- **MySQL 5.7 → 8.4** — Multi-hop B/G (5.7→8.0→8.4 automated in one deployment)
+- Use `--version-prefix 5.7` in Step 1 to discover 5.7 instances
+
 ## Steps
 
 ### Step 1: Discover Instances

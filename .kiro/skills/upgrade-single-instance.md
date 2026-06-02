@@ -13,6 +13,10 @@ Execute the full upgrade workflow for a single RDS MySQL instance.
 - `secret_id` (optional) — Secrets Manager secret for MySQL credentials
 - `target_version` — Target MySQL version (default: 8.4.9)
 
+## Supported Upgrade Paths
+- **MySQL 8.0.28+ → 8.4.x** — Single-step B/G or in-place
+- **MySQL 5.7 → 8.4.x** — Multi-hop B/G: creates B/G with 8.0 target, then upgrades green to 8.4 (automated, no user action needed)
+
 ## Steps
 
 ### Step 0: Get Instance Details

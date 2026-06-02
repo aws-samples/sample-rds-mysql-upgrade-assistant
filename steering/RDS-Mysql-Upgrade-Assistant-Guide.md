@@ -159,8 +159,9 @@ When working with multiple instances in a session:
 
 ## Supported Upgrade Paths
 
-- MySQL 8.0.28+ → 8.4.x (major version upgrade)
-- Source must be 8.0.28 or later for full precheck coverage
+- MySQL 8.0.28+ → 8.4.x (major version upgrade, single step)
+- MySQL 5.7 → 8.4.x (multi-hop via Blue/Green: 5.7→8.0→8.4 in one deployment)
+- Source must be 8.0.28 or later for full precheck coverage (5.7 prechecks are limited)
 - Target: MySQL 8.4.9 (current RDS latest)
 
 ## Upgrade Strategies
