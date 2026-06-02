@@ -143,6 +143,11 @@ if [[ "$IS_CLUSTER" == "false" && -n "$TARGET_VERSION" ]]; then
     TWO_STEP=true
     echo "Multi-hop upgrade detected: $SOURCE_VERSION → 8.0 → $TARGET_VERSION" >&2
     echo "B/G will upgrade to $INTERMEDIATE_VERSION first, then green upgraded to $TARGET_VERSION." >&2
+    # Warn if custom option group — it won't be preserved in intermediate step
+    if [[ -n "${INSTANCE_OG:-}" && "$INSTANCE_OG" != default:* && "$INSTANCE_OG" != "None" ]]; then
+      echo "WARNING: Custom option group '$INSTANCE_OG' will not be preserved during 5.7→8.0 step." >&2
+      echo "  RDS will use default:mysql-8.0 for intermediate green. Specify --target-option-group for final 8.4 upgrade." >&2
+    fi
   fi
 fi
 

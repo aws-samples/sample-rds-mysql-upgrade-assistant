@@ -15,7 +15,7 @@ Execute the full upgrade workflow for a single RDS MySQL instance.
 
 ## Supported Upgrade Paths
 - **MySQL 8.0.28+ → 8.4.x** — Single-step B/G or in-place
-- **MySQL 5.7 → 8.4.x** — Multi-hop B/G: creates B/G with 8.0 target, then upgrades green to 8.4 (automated, no user action needed)
+- **MySQL 5.7 → 8.4.x** — Multi-hop B/G: creates B/G with 8.0 target, then requires upgrading green to 8.4 (handled automatically by the Step 4a workflow below)
 
 ## Steps
 
