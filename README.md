@@ -1,6 +1,15 @@
 # RDS MySQL Upgrade Assistant
 
-Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL 8.0 → 8.4. Designed for AWS customers with 100+ RDS MySQL 8.0 instances approaching end-of-life.
+Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL to 8.4. Designed for AWS customers with 100+ RDS MySQL instances approaching end-of-life.
+
+### Supported Upgrade Paths
+
+| Source | Target | Method |
+|--------|--------|--------|
+| MySQL 8.0.28+ | 8.4.9 | Blue/Green (single-step) or in-place |
+| MySQL 8.0 with custom option group | 8.4.9 | Blue/Green (two-step: same-version B/G → upgrade green) |
+| MySQL 5.7 | 8.4.9 | Blue/Green multi-hop (5.7→8.0→8.4 in one deployment) |
+| Multi-AZ DB Cluster (8.0) | 8.4.9 | In-place (Blue/Green not supported) |
 
 ## Architecture
 

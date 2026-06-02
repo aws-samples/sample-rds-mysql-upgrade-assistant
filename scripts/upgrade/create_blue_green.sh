@@ -130,7 +130,16 @@ if [[ "$IS_CLUSTER" == "false" && -n "$TARGET_VERSION" ]]; then
   SOURCE_VERSION=$(echo "$INST_JSON" | jq -r '.DBInstances[0].EngineVersion // empty')
   if [[ "$SOURCE_VERSION" == 5.7.* && "$TARGET_VERSION" == 8.4.* ]]; then
     MULTI_HOP=true
-    INTERMEDIATE_VERSION="8.0.46"  # Latest 8.0 for intermediate step
+    # Dynamically get the latest available MySQL 8.0.x version in this region
+    INTERMEDIATE_VERSION=$(aws rds describe-db-engine-versions \
+      ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+      --engine mysql --engine-version 8.0 \
+      --query 'DBEngineVersions[-1].EngineVersion' \
+      --output text 2>/dev/null || echo "")
+    if [[ -z "$INTERMEDIATE_VERSION" || "$INTERMEDIATE_VERSION" == "None" ]]; then
+      INTERMEDIATE_VERSION="8.0.46"  # Fallback if API query fails
+      echo "WARNING: Could not query latest 8.0.x version. Using fallback: $INTERMEDIATE_VERSION" >&2
+    fi
     TWO_STEP=true
     echo "Multi-hop upgrade detected: $SOURCE_VERSION → 8.0 → $TARGET_VERSION" >&2
     echo "B/G will upgrade to $INTERMEDIATE_VERSION first, then green upgraded to $TARGET_VERSION." >&2
@@ -161,11 +170,17 @@ if [[ "$TWO_STEP" == "false" ]]; then
   [[ -n "$TARGET_PARAM_GROUP" ]] && BG_ARGS+=(--target-db-parameter-group-name "$TARGET_PARAM_GROUP")
   [[ -n "$TARGET_OPTION_GROUP" ]] && BG_ARGS+=(--target-db-instance-option-group-name "$TARGET_OPTION_GROUP")
 else
-  # Two-step: use the source (8.0) param group for same-version B/G
-  # RDS requires target param group if source uses a custom one
-  source_pg=$(echo "$INST_JSON" | jq -r '.DBInstances[0].DBParameterGroups[0].DBParameterGroupName // empty')
-  if [[ -n "$source_pg" && "$source_pg" != default.* ]]; then
-    BG_ARGS+=(--target-db-parameter-group-name "$source_pg")
+  # Two-step: RDS requires target param group if source uses a custom one
+  if [[ "$MULTI_HOP" == "true" ]]; then
+    # Multi-hop (5.7→8.0→8.4): don't pass source 5.7 param group (incompatible with 8.0)
+    # Let RDS use default.mysql8.0 for the intermediate step
+    echo "Multi-hop: using default param group for intermediate 8.0 step." >&2
+  else
+    # Same-version B/G (custom option group): pass source param group
+    source_pg=$(echo "$INST_JSON" | jq -r '.DBInstances[0].DBParameterGroups[0].DBParameterGroupName // empty')
+    if [[ -n "$source_pg" && "$source_pg" != default.* ]]; then
+      BG_ARGS+=(--target-db-parameter-group-name "$source_pg")
+    fi
   fi
 fi
 
