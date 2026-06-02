@@ -130,7 +130,7 @@ if [[ "$IS_CLUSTER" == "false" && -n "$TARGET_VERSION" ]]; then
   SOURCE_VERSION=$(echo "$INST_JSON" | jq -r '.DBInstances[0].EngineVersion // empty')
   if [[ "$SOURCE_VERSION" == 5.7.* && "$TARGET_VERSION" == 8.4.* ]]; then
     MULTI_HOP=true
-    INTERMEDIATE_VERSION="8.0.39"  # Latest 8.0 for intermediate step
+    INTERMEDIATE_VERSION="8.0.46"  # Latest 8.0 for intermediate step
     TWO_STEP=true
     echo "Multi-hop upgrade detected: $SOURCE_VERSION → 8.0 → $TARGET_VERSION" >&2
     echo "B/G will upgrade to $INTERMEDIATE_VERSION first, then green upgraded to $TARGET_VERSION." >&2
