@@ -420,6 +420,7 @@ Discover all MySQL 8.0 instances
 - [Amazon RDS MySQL 8.0 to 8.4 Prechecks](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_UpgradeDBInstance.MySQL.Major.html)
 - [RDS Blue/Green Deployments](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments.html)
 - [Parameter Group Migration Tool](https://github.com/awslabs/rds-support-tools/blob/main/rds-general/shell/migrate_param_group.sh)
+- [Secrets Manager 設定指南](docs/secrets-manager-setup.zh-TW.md) — 安全儲存資料庫密碼的完整步驟
 - [修復手冊](docs/remediation-playbook.md) — 每項 precheck 發現的修復步驟
 - [應用程式驗證範本](scripts/validate/app_validate_template.sql) — 使用您的關鍵查詢進行自訂
 
