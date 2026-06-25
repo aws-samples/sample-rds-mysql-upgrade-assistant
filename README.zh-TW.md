@@ -357,6 +357,7 @@ Discover all MySQL 8.0 instances
 - "Discover all MySQL 8.0 instances in us-west-2"
 - "Run precheck on prod-db-01 using secret prod/db01/creds"
 - "Create Blue/Green deployment for prod-db-01 upgrading to 8.4"
+- "Run in-place upgrade for dev-db-01 to 8.4.9"
 - "Check the status of Blue/Green deployment bgd-xxx"
 - "Run batch upgrade with config examples/batch_config.yaml in dry-run mode"
 
