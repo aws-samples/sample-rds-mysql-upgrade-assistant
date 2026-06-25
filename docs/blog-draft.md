@@ -334,6 +334,58 @@ Failed instances:
 ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --resume
 ```
 
+### Option 3: Batch upgrade with Kiro
+
+For teams that prefer natural language over editing YAML configs, Kiro can orchestrate the full batch workflow interactively:
+
+1. **Discover and generate config:**
+
+```
+"Discover all MySQL 8.0 instances in us-west-2 tagged env=production
+ and generate a batch config with secret prefix prod/rds/"
+```
+
+Kiro calls `discover_instances` and `generate_config`, then presents the generated configuration for review.
+
+2. **Run fleet-wide precheck:**
+
+```
+"Run batch precheck on all MySQL 8.0 instances in us-west-2
+ using secret prod/rds/shared-admin"
+```
+
+Kiro executes `batch_precheck` and summarizes results — which instances passed, which have errors that need fixing.
+
+3. **Execute batch upgrade (dry-run first):**
+
+```
+"Run batch upgrade with config batch_config.yaml in dry-run mode"
+```
+
+Review the dry-run output, then proceed:
+
+```
+"Run batch upgrade with config batch_config.yaml, concurrency 5"
+```
+
+4. **Monitor and validate:**
+
+```
+"Show the status of all Blue/Green deployments in us-west-2"
+```
+
+```
+"Run post-upgrade validation on all instances that completed upgrade"
+```
+
+5. **Clean up:**
+
+```
+"Clean up all completed Blue/Green deployments in us-west-2"
+```
+
+> **Tip:** Kiro maintains conversation context, so you can refer back to previous results — e.g., "upgrade the 3 instances that passed precheck" or "show me which ones failed". Use the Kiro Skills (see README) for pre-built multi-step workflows that combine these commands automatically.
+
 ## Best practices
 
 When using this solution, keep the following best practices in mind:

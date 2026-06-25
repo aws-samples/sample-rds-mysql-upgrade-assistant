@@ -326,6 +326,58 @@ Failed instances:
 ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --resume
 ```
 
+### 选项 3：使用 Kiro 进行批次升级
+
+对于偏好自然语言而非编辑 YAML 配置的团队，Kiro 可以交互式地编排完整的批次工作流：
+
+1. **探索并生成配置：**
+
+```
+"Discover all MySQL 8.0 instances in us-west-2 tagged env=production
+ and generate a batch config with secret prefix prod/rds/"
+```
+
+Kiro 调用 `discover_instances` 和 `generate_config`，然后呈现生成的配置供审阅。
+
+2. **执行全机群预检：**
+
+```
+"Run batch precheck on all MySQL 8.0 instances in us-west-2
+ using secret prod/rds/shared-admin"
+```
+
+Kiro 执行 `batch_precheck` 并汇总结果 — 哪些实例通过，哪些有需要修复的错误。
+
+3. **执行批次升级（先试运行）：**
+
+```
+"Run batch upgrade with config batch_config.yaml in dry-run mode"
+```
+
+审阅试运行输出后，继续执行：
+
+```
+"Run batch upgrade with config batch_config.yaml, concurrency 5"
+```
+
+4. **监控和验证：**
+
+```
+"Show the status of all Blue/Green deployments in us-west-2"
+```
+
+```
+"Run post-upgrade validation on all instances that completed upgrade"
+```
+
+5. **清理：**
+
+```
+"Clean up all completed Blue/Green deployments in us-west-2"
+```
+
+> **提示：** Kiro 保持对话上下文，因此您可以引用之前的结果 — 例如 "upgrade the 3 instances that passed precheck" 或 "show me which ones failed"。使用 Kiro Skills（请参阅 README）获取预构建的多步骤工作流，自动组合这些命令。
+
 
 ## 最佳实践
 
