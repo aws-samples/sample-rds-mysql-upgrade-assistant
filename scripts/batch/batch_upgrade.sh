@@ -310,12 +310,22 @@ migrate_param_group_once() {
   local migrate_script="$SCRIPT_DIR/params/migrate_param_group.sh"
   if [[ -f "$migrate_script" ]]; then
     "$migrate_script" -s "$source_pg" -t "$target_pg" -f "$TARGET_PARAM_FAMILY" ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} || {
-      log_warn "Parameter migration failed for $source_pg. Target group may already exist."
+      log_warn "Parameter migration script returned non-zero for $source_pg. Checking if target group exists..."
     }
   else
     log_warn "migrate_param_group.sh not found. Skipping parameter migration."
   fi
-  echo "${source_pg}=${target_pg}" >> "$PARAM_GROUP_MAP_FILE"
+
+  # Verify target parameter group actually exists before adding to map
+  if aws rds describe-db-parameter-groups ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+    --db-parameter-group-name "$target_pg" --query 'DBParameterGroups[0].DBParameterGroupName' \
+    --output text > /dev/null 2>&1; then
+    echo "${source_pg}=${target_pg}" >> "$PARAM_GROUP_MAP_FILE"
+    log_info "Verified: Target parameter group '$target_pg' exists."
+  else
+    log_error "Target parameter group '$target_pg' does NOT exist. Migration failed."
+    log_error "Fix: Create it manually or re-run: $SCRIPT_DIR/params/migrate_param_group.sh -s $source_pg -t $target_pg -f $TARGET_PARAM_FAMILY"
+  fi
 }
 
 # --- Option group dedup ---
@@ -486,7 +496,7 @@ upgrade_instance() {
 
   # Step 3: Execute upgrade based on strategy
   if [[ "$strategy" == "blue_green" ]]; then
-    upgrade_blue_green "$id" "$target_pg" "$target_og"
+    upgrade_blue_green "$id" "$target_pg" "$target_og" "$source_pg"
   elif [[ "$strategy" == "in_place" ]]; then
     # For clusters, pass cluster ID but track status with instance ID
     if [[ "$upgrade_target" != "$id" ]]; then
@@ -520,7 +530,7 @@ upgrade_instance() {
 }
 
 upgrade_blue_green() {
-  local id="$1" target_pg="$2" target_og="${3:-}"
+  local id="$1" target_pg="$2" target_og="${3:-}" source_pg="${4:-}"
 
   if [[ "$DRY_RUN" == "true" ]]; then
     log_warn "[DRY RUN] Would create Blue/Green for $id"
@@ -570,6 +580,15 @@ upgrade_blue_green() {
   # Create new deployment if none exists
   if [[ -z "$DEPLOYMENT_ID" ]]; then
     log_step "Step 3: Creating Blue/Green deployment for instance '$id'"
+
+    # Guard: custom param group requires target_pg
+    if [[ -n "$source_pg" && "$source_pg" != "default."* && -z "$target_pg" ]]; then
+      log_error "$id: Source uses custom parameter group '$source_pg' but no target parameter group available."
+      log_error "$id: Fix: Run parameter migration first:"
+      log_error "  ./scripts/params/migrate_param_group.sh -s $source_pg -t ${source_pg}-${TARGET_PARAM_FAMILY//./} -f $TARGET_PARAM_FAMILY"
+      set_status "$id" "FAILED" "Missing target parameter group for custom source '$source_pg'"
+      return
+    fi
 
     # Detect if instance has a custom option group — forces two-step B/G
     # (RDS doesn't allow major version upgrade + custom option group in one call)
