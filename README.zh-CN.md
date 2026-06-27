@@ -437,6 +437,7 @@ Discover all MySQL 8.0 instances
 - [RDS Blue/Green Deployments](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments.html)
 - [Parameter Group Migration Tool](https://github.com/awslabs/rds-support-tools/blob/main/rds-general/shell/migrate_param_group.sh)
 - [Secrets Manager 设置指南](docs/secrets-manager-setup.md) — 安全存储数据库密码的完整步骤（[中文版](docs/secrets-manager-setup.zh-TW.md)）
+- [常见问题 FAQ](docs/faq.md) — 认证、批次升级、Blue/Green、故障排除常见问答
 - [修复手册](docs/remediation-playbook.md) — 每项 precheck 发现的修复步骤
 - [应用程序验证模板](scripts/validate/app_validate_template.sql) — 使用您的关键查询进行自定义
 

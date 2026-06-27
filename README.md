@@ -442,6 +442,7 @@ For each instance, the tool follows 10 steps:
 - [RDS Blue/Green Deployments](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments.html)
 - [Parameter Group Migration Tool](https://github.com/awslabs/rds-support-tools/blob/main/rds-general/shell/migrate_param_group.sh)
 - [Secrets Manager Setup Guide](docs/secrets-manager-setup.md) — Step-by-step guide to store DB credentials securely
+- [FAQ](docs/faq.md) — Common questions about credentials, batch upgrades, Blue/Green, and troubleshooting
 - [Remediation Playbook](docs/remediation-playbook.md) — Fix steps for each precheck finding
 - [Application Validation Template](scripts/validate/app_validate_template.sql) — Customize with your critical queries
 
