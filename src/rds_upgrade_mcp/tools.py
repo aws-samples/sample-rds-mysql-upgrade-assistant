@@ -375,3 +375,20 @@ def register_tools(mcp):
             capture_output=True, text=True, timeout=1800,
         )
         return result.stdout + (f"\nSTDERR: {result.stderr}" if result.returncode != 0 else "")
+
+    @mcp.tool()
+    async def batch_status(
+        config_path: str,
+    ) -> str:
+        """Check the status of a previous batch upgrade run.
+        Shows which instances are completed, failed, in-progress, or pending.
+        Use this after reconnecting to see where the previous run left off.
+        If instances remain, use batch_upgrade with resume=True to continue."""
+        args = ["--config", config_path, "--status"]
+        result = subprocess.run(
+            ["bash", str(SCRIPTS_DIR / "batch/batch_upgrade.sh")] + args,
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            return f"No batch state found for config: {config_path}\n{result.stderr}"
+        return result.stdout

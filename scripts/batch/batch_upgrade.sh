@@ -31,6 +31,7 @@ CONFIG_PATH=""
 DRY_RUN=false
 RESUME=false
 VALIDATE_CONFIG_ONLY=false
+STATUS_ONLY=false
 CONCURRENCY=""
 REGION=""
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -48,6 +49,7 @@ while [[ $# -gt 0 ]]; do
     --dry-run) DRY_RUN=true; shift ;;
     --resume) RESUME=true; shift ;;
     --validate-config) VALIDATE_CONFIG_ONLY=true; shift ;;
+    --status) STATUS_ONLY=true; shift ;;
     --concurrency) CONCURRENCY="$2"; shift 2 ;;
     --region) REGION="$2"; shift 2 ;;
     *) echo "Unknown option: $1"; exit 1 ;;
@@ -244,6 +246,85 @@ fi
 
 REGION_ARGS=()
 [[ -n "$REGION" ]] && REGION_ARGS=(--region "$REGION")
+
+# --- Status mode: show current batch state and exit ---
+if [[ "$STATUS_ONLY" == "true" ]]; then
+  STATE_DIR="$(dirname "$CONFIG_PATH")"
+  LATEST_STATE=$(ls -t "${STATE_DIR}"/batch_state_*.json 2>/dev/null | head -1)
+  if [[ -z "$LATEST_STATE" ]]; then
+    echo "No batch state found. No previous upgrade has been run with this config."
+    exit 0
+  fi
+
+  echo "============================================================"
+  echo "Batch Upgrade Status"
+  echo "============================================================"
+  echo "State file:  $LATEST_STATE"
+  echo "Started at:  $(jq -r '.started_at // "unknown"' "$LATEST_STATE")"
+  echo "------------------------------------------------------------"
+
+  TOTAL_S=$(jq '.instances | length' "$LATEST_STATE")
+  COMPLETED_S=$(jq '[.instances[] | select(.status == "COMPLETED")] | length' "$LATEST_STATE")
+  FAILED_S=$(jq '[.instances[] | select(.status == "FAILED")] | length' "$LATEST_STATE")
+  SKIPPED_S=$(jq '[.instances[] | select(.status == "SKIPPED")] | length' "$LATEST_STATE")
+  IN_PROGRESS_S=$(jq '[.instances[] | select(.status == "IN_PROGRESS")] | length' "$LATEST_STATE")
+  PENDING_S=$(jq '[.instances[] | select(.status == "PENDING")] | length' "$LATEST_STATE")
+  PENDING_SW_S=$(jq '[.instances[] | select(.status == "PENDING_SWITCHOVER")] | length' "$LATEST_STATE")
+
+  printf "  %-22s %s\n" "Total:" "$TOTAL_S"
+  printf "  %-22s %s\n" "Completed:" "$COMPLETED_S"
+  printf "  %-22s %s\n" "Failed:" "$FAILED_S"
+  printf "  %-22s %s\n" "Skipped:" "$SKIPPED_S"
+  printf "  %-22s %s\n" "In Progress:" "$IN_PROGRESS_S"
+  printf "  %-22s %s\n" "Pending Switchover:" "$PENDING_SW_S"
+  printf "  %-22s %s\n" "Pending:" "$PENDING_S"
+  echo "------------------------------------------------------------"
+
+  if [[ "$IN_PROGRESS_S" -gt 0 ]]; then
+    echo ""
+    echo "⚠ In-progress instances (may have been interrupted):"
+    jq -r '.instances | to_entries[] | select(.value.status == "IN_PROGRESS") | "  \(.key)"' "$LATEST_STATE"
+  fi
+
+  if [[ "$FAILED_S" -gt 0 ]]; then
+    echo ""
+    echo "✗ Failed instances:"
+    jq -r '.instances | to_entries[] | select(.value.status == "FAILED") | "  \(.key): \(.value.detail // "unknown")"' "$LATEST_STATE"
+  fi
+
+  if [[ "$PENDING_SW_S" -gt 0 ]]; then
+    echo ""
+    echo "⏸ Pending switchover (waiting for manual approval):"
+    jq -r '.instances | to_entries[] | select(.value.status == "PENDING_SWITCHOVER") | "  \(.key): \(.value.detail // "")"' "$LATEST_STATE"
+  fi
+
+  REMAINING=$((PENDING_S + IN_PROGRESS_S + PENDING_SW_S))
+  echo ""
+  echo "============================================================"
+  if [[ "$REMAINING" -gt 0 ]]; then
+    echo "→ $REMAINING instance(s) remaining. Resume with:"
+    echo "  ./scripts/batch/batch_upgrade.sh --config $CONFIG_PATH --resume"
+  else
+    echo "✓ All instances processed."
+  fi
+  echo "============================================================"
+
+  # JSON output for MCP consumption
+  cat <<ENDJSON
+{
+  "state_file": "$LATEST_STATE",
+  "total": $TOTAL_S,
+  "completed": $COMPLETED_S,
+  "failed": $FAILED_S,
+  "skipped": $SKIPPED_S,
+  "in_progress": $IN_PROGRESS_S,
+  "pending_switchover": $PENDING_SW_S,
+  "pending": $PENDING_S,
+  "resumable": $( [[ "$REMAINING" -gt 0 ]] && echo "true" || echo "false" )
+}
+ENDJSON
+  exit 0
+fi
 
 # --- State file ---
 STATE_DIR="$(dirname "$CONFIG_PATH")"

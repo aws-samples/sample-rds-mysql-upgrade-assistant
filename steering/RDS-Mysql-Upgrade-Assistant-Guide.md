@@ -119,6 +119,8 @@ After each step completes successfully, suggest the next step with a brief expla
 
 > ⚠️ **CREDENTIALS**: Always ask the user for `secret_id` before calling any tool that requires database credentials (`run_precheck`, `batch_precheck`, `app_validate`). Do NOT guess or auto-discover secrets from Secrets Manager. If the user hasn't provided one, ask them explicitly.
 
+> ⚠️ **BATCH RESUME**: When a user asks about batch upgrades or mentions a previous run was interrupted, ALWAYS call `batch_status` first to check the current state. This shows which instances are completed, failed, or still pending. If instances remain, suggest `batch_upgrade` with `resume=True` — do NOT re-run discovery or regenerate the config. The state file tracks all progress.
+
 ## Guardrails for Destructive Operations
 
 The following operations are **irreversible** — you MUST:
