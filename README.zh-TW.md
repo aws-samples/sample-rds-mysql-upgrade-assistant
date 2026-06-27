@@ -224,6 +224,21 @@ cd sample-rds-mysql-upgrade-assistant
 ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --concurrency 3
 ```
 
+> **長時間執行提示：** 批次升級可能耗時數小時。建議使用 `tmux` 或 `nohup` 避免 SSH 斷線導致任務中斷：
+> ```bash
+> # 方法 1：tmux（建議 — 可重新連接）
+> tmux new -s upgrade
+> ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --concurrency 5
+> # 斷開：Ctrl+b, d ｜ 重新連接：tmux attach -t upgrade
+>
+> # 方法 2：nohup（背景執行）
+> nohup ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --concurrency 5 \
+>   > upgrade.log 2>&1 &
+>
+> # 如果中斷，從上次進度恢復：
+> ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --resume
+> ```
+
 批次協調器也會執行執行時期自動偵測：如果執行個體屬於 Multi-AZ DB Cluster，會自動覆寫策略為 `in_place`，以叢集層級執行升級，並跳過同一叢集的其他成員。
 
 獨立批次預檢（不觸發升級）：

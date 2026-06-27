@@ -229,6 +229,21 @@ Review and edit the generated config, then run:
 ./scripts/batch/batch_upgrade.sh --config batch_config.yaml
 ```
 
+> **Long-running tip:** Batch upgrades can take hours. Use `tmux` or `nohup` to prevent SSH disconnection from interrupting the process:
+> ```bash
+> # Option 1: tmux (recommended — allows re-attach)
+> tmux new -s upgrade
+> ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --concurrency 5
+> # Detach: Ctrl+b, d | Re-attach: tmux attach -t upgrade
+>
+> # Option 2: nohup (background execution)
+> nohup ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --concurrency 5 \
+>   > upgrade.log 2>&1 &
+>
+> # If interrupted, resume from last checkpoint:
+> ./scripts/batch/batch_upgrade.sh --config batch_config.yaml --resume
+> ```
+
 The batch orchestrator also performs runtime auto-detection: if an instance belongs to a Multi-AZ DB Cluster, it automatically overrides the strategy to `in_place`, upgrades at the cluster level, and skips other members of the same cluster.
 
 For standalone batch precheck (without triggering upgrades):

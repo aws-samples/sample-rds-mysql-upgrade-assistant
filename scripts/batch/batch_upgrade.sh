@@ -9,6 +9,20 @@
 # Usage:
 #   ./batch_upgrade.sh --config <config.yaml> [--dry-run] [--resume]
 #                      [--concurrency <N>] [--region <region>]
+#
+# Session persistence (recommended for long-running batch upgrades):
+#   # Option 1: tmux (recommended — allows re-attach)
+#   tmux new -s upgrade
+#   ./batch_upgrade.sh --config batch_config.yaml --concurrency 5
+#   # Detach: Ctrl+b, d | Re-attach: tmux attach -t upgrade
+#
+#   # Option 2: nohup (simple background execution)
+#   nohup ./batch_upgrade.sh --config batch_config.yaml --concurrency 5 \
+#     > upgrade_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+#   # Check progress: tail -f upgrade_*.log
+#
+#   # If interrupted, resume from where it left off:
+#   ./batch_upgrade.sh --config batch_config.yaml --resume
 # ============================================================
 
 set -uo pipefail
@@ -881,6 +895,24 @@ for ((i=0; i<TOTAL; i++)); do
   if [[ "$current_status" == "COMPLETED" || "$current_status" == "SKIPPED" ]]; then
     log_info "$id: Already $current_status, skipping"
     continue
+  fi
+
+  # Resume handling: IN_PROGRESS means previous run was interrupted
+  if [[ "$RESUME" == "true" && "$current_status" == "IN_PROGRESS" ]]; then
+    log_warn "$id: Was IN_PROGRESS (interrupted). Checking actual state before retrying..."
+    # Check if a B/G deployment already exists — avoid creating duplicates
+    local existing_bg_id
+    existing_bg_id=$(aws rds describe-blue-green-deployments ${REGION_ARGS[@]+"${REGION_ARGS[@]}"} \
+      --query "BlueGreenDeployments[?contains(Source, '${id}') && Status!='DELETED' && Status!='DELETING'] | [0].BlueGreenDeploymentIdentifier" \
+      --output text 2>/dev/null || echo "None")
+    if [[ -n "$existing_bg_id" && "$existing_bg_id" != "None" ]]; then
+      log_info "$id: Found existing B/G deployment ($existing_bg_id). Will resume from monitor step."
+    fi
+    set_status "$id" "PENDING"
+  fi
+
+  if [[ "$RESUME" == "true" && "$current_status" == "PENDING_SWITCHOVER" ]]; then
+    log_info "$id: Was PENDING_SWITCHOVER. Will attempt switchover on resume."
   fi
 
   # Concurrency control (bash 4.2+ compatible — no wait -n)
