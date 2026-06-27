@@ -21,6 +21,16 @@ Automate the full batch upgrade workflow from discovery to completion.
 
 ## Steps
 
+### Step 0: Check for Previous Run (Resume Detection)
+Always check if a previous batch run exists before starting a new one:
+```bash
+bash scripts/batch/batch_upgrade.sh --config batch_config.yaml --status
+```
+- If a state file exists with remaining instances → ask user: "A previous batch run was found with N instances remaining. Resume from where it left off?"
+  - If yes → skip to **Step 5b (Resume)**
+  - If no → continue with Step 1
+- If no state file → this is a fresh run, continue with Step 1
+
 ### Step 1: Discover Instances
 ```bash
 bash scripts/inventory/discover_instances.sh --version-prefix 8.0 --json
@@ -76,13 +86,34 @@ bash scripts/batch/batch_upgrade.sh --config batch_config.yaml --dry-run
 Report the dry run results. Confirm with user before proceeding.
 
 ### Step 5: Execute Batch Upgrade
+
+> **重要：** 批次升級可能耗時數小時。建議在 `tmux` 中執行，避免連線中斷：
+> ```bash
+> tmux new -s upgrade
+> ```
+
 ```bash
 bash scripts/batch/batch_upgrade.sh \
   --config batch_config.yaml --concurrency <concurrency>
 ```
 Monitor progress and report the summary (completed, failed, skipped).
 
-### Step 5b: Warm-Up Mode (Optional)
+### Step 5b: Resume (After Interruption or Warm-Up)
+If the batch was interrupted (SSH disconnection, manual stop) or paused for warm-up:
+```bash
+# Check current status first
+bash scripts/batch/batch_upgrade.sh --config batch_config.yaml --status
+
+# Resume from last checkpoint
+bash scripts/batch/batch_upgrade.sh --config batch_config.yaml --resume
+```
+The resume mechanism:
+- Skips COMPLETED and SKIPPED instances
+- Retries IN_PROGRESS instances (detects existing B/G deployments to avoid duplicates)
+- Continues PENDING_SWITCHOVER instances (executes switchover)
+- Processes remaining PENDING instances normally
+
+### Step 5c: Warm-Up Mode (Optional)
 For EBS lazy loading mitigation, set `auto_switchover: false` in the config. The batch will stop after green environments are ready (PENDING_SWITCHOVER state):
 ```yaml
 # In batch_config.yaml
