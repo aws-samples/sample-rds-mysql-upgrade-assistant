@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "rds-mysql-upgrade": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory", "/path/to/rds-mysql-upgrade-assistant",
+        "python", "-m", "rds_upgrade_mcp.server"
+      ],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_DEFAULT_REGION": "us-west-2"
+      }
+    }
+  }
+}

@@ -392,6 +392,91 @@ This project includes pre-built Kiro skills in `.kiro/skills/` that automate mul
 | **Cleanup Deployments** | Find completed Blue/Green deployments, validate, and clean up old environments |
 | **Application Validation** | Run custom app-level SQL checks against instances after upgrade |
 
+### Using with Other AI Tools
+
+This MCP server works with **any AI tool that supports the Model Context Protocol**. Configuration examples:
+
+#### Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
+```json
+{
+  "mcpServers": {
+    "rds-mysql-upgrade": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/rds-mysql-upgrade-assistant",
+               "python", "-m", "rds_upgrade_mcp.server"],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_DEFAULT_REGION": "us-west-2"
+      }
+    }
+  }
+}
+```
+
+#### Cursor
+
+Add to `.cursor/mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "rds-mysql-upgrade": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/rds-mysql-upgrade-assistant",
+               "python", "-m", "rds_upgrade_mcp.server"],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_DEFAULT_REGION": "us-west-2"
+      }
+    }
+  }
+}
+```
+
+#### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "rds-mysql-upgrade": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/rds-mysql-upgrade-assistant",
+               "python", "-m", "rds_upgrade_mcp.server"],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_DEFAULT_REGION": "us-west-2"
+      }
+    }
+  }
+}
+```
+
+#### Amazon Q Developer CLI
+
+```bash
+# Add to ~/.aws/amazonq/mcp.json
+{
+  "mcpServers": {
+    "rds-mysql-upgrade": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/rds-mysql-upgrade-assistant",
+               "python", "-m", "rds_upgrade_mcp.server"],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_DEFAULT_REGION": "us-west-2"
+      }
+    }
+  }
+}
+```
+
+> Replace `/path/to/rds-mysql-upgrade-assistant` with the actual path. See [`examples/`](examples/) for ready-to-copy config files.
+
 ## Upgrade Workflow
 
 For each instance, the tool follows 10 steps:

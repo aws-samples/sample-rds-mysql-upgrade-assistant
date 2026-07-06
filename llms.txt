@@ -1,0 +1,86 @@
+# RDS MySQL Upgrade Assistant
+
+> Automates batch Blue/Green deployment upgrades for Amazon RDS MySQL to 8.4.
+
+## Overview
+
+This is an MCP (Model Context Protocol) server that provides 17 tools for automating RDS MySQL upgrades. Any AI tool that supports MCP can use this server.
+
+## MCP Server
+
+- Transport: stdio
+- Command: `uv run --directory /path/to/rds-mysql-upgrade-assistant python -m rds_upgrade_mcp.server`
+
+## Available Tools
+
+- `discover_instances` — Find all RDS MySQL instances by version and tags
+- `run_precheck` — Run 19 SQL compatibility checks (MySQL 8.0→8.4)
+- `batch_precheck` — Run prechecks across all instances in a region
+- `batch_status` — Check progress of a previous batch upgrade run
+- `batch_upgrade` — Execute batch upgrade with concurrency and resume support
+- `generate_config` — Auto-generate batch config from discovered instances
+- `migrate_params` — Migrate parameter group to target engine family
+- `prepare_param_group` — Auto-detect and prepare parameter group for upgrade
+- `check_option_group` — Check and migrate custom option groups
+- `create_blue_green` — Create Blue/Green deployment for MySQL upgrade
+- `monitor_blue_green` — Poll deployment status until ready
+- `pre_switchover_check` — Verify switchover guardrails before proceeding
+- `switchover` — Execute Blue/Green switchover
+- `upgrade_green_instance` — Upgrade green instance in two-step B/G
+- `in_place_upgrade` — Run in-place upgrade for instances/clusters
+- `validate_upgrade` — Post-upgrade infrastructure validation
+- `app_validate` — Run application-level SQL validation
+- `cleanup_blue_green` — Delete Blue/Green deployment after switchover
+
+## Upgrade Workflow
+
+1. Discover MySQL 8.0 instances
+2. Run precheck (19 SQL compatibility checks)
+3. Migrate parameter group and option group
+4. Create Blue/Green deployment (or in-place upgrade)
+5. Monitor until green is ready
+6. Validate green environment
+7. Pre-switchover check
+8. Switchover
+9. Post-upgrade validation
+10. Cleanup old environment
+
+## Key Documentation
+
+- [README](README.md) — Full setup and usage guide
+- [FAQ](docs/faq.md) — Common questions and troubleshooting
+- [Remediation Playbook](docs/remediation-playbook.md) — Fix steps for precheck findings
+- [Secrets Manager Setup](docs/secrets-manager-setup.md) — Optional credential management
+- [IAM Policies](docs/iam-policies.json) — Required AWS permissions
+- [Steering Guide](steering/RDS-Mysql-Upgrade-Assistant-Guide.md) — AI assistant behavior guide
+
+## Supported Upgrade Paths
+
+| Source | Target | Method |
+|--------|--------|--------|
+| MySQL 8.0.28+ | 8.4.9 | Blue/Green or in-place |
+| MySQL 8.0 + custom option group | 8.4.9 | Two-step Blue/Green |
+| MySQL 5.7 | 8.4.9 | Multi-hop Blue/Green |
+| Multi-AZ DB Cluster (8.0) | 8.4.9 | In-place only |
+
+## Prerequisites
+
+- AWS CLI v2 with appropriate IAM permissions
+- mysql client (standard MySQL command-line client)
+- jq (JSON processor)
+- Python 3.10+ with uv (for MCP server)
+
+## Configuration
+
+Set environment variables:
+- `AWS_PROFILE` — AWS CLI profile to use
+- `AWS_DEFAULT_REGION` — Target AWS region
+
+## Example Prompts
+
+- "Discover all MySQL 8.0 instances in us-west-2"
+- "Run precheck on prod-db-01 using secret prod/db01/creds"
+- "Create a Blue/Green deployment for prod-db-01 upgrading to 8.4.9"
+- "Run in-place upgrade for dev-db-01 to 8.4.9"
+- "Check the status of my batch upgrade"
+- "Resume the batch upgrade from where it left off"
