@@ -71,9 +71,9 @@ fi
 if [[ ! "$USER" =~ ^[a-zA-Z0-9._-]+$ ]] || [ ${#USER} -gt 63 ]; then
   echo "ERROR: Invalid username format"; exit 1
 fi
-# Target version validation: only 8.4.0 - 8.4.9 supported
-if [[ ! "$TARGET_VERSION" =~ ^8\.4\.[0-9]$ ]]; then
-  echo "ERROR: Unsupported target version '$TARGET_VERSION'. This tool supports MySQL 8.4.0 through 8.4.9 only." >&2
+# Target version validation: 8.4.x series supported
+if [[ ! "$TARGET_VERSION" =~ ^8\.4\.[0-9]+$ ]]; then
+  echo "ERROR: Unsupported target version '$TARGET_VERSION'. This tool supports MySQL 8.4.x only." >&2
   exit 1
 fi
 

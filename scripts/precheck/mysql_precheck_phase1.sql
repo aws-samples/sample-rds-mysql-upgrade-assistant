@@ -152,15 +152,15 @@ SET @error_count = @error_count +
 -- by hand.
 SELECT
   CASE
-    WHEN @target_version REGEXP '^8\\.4\\.[0-9]$'
-    THEN CONCAT('OK: Target version ', @target_version, ' is in the supported 8.4.0 - 8.4.9 range')
+    WHEN @target_version REGEXP '^8\\.4\\.[0-9]+$'
+    THEN CONCAT('OK: Target version ', @target_version, ' is in the supported 8.4.x range')
     ELSE CONCAT('ERROR: Unsupported target version ''', @target_version,
-                '''. This tool supports MySQL 8.4.0 through 8.4.9 only. ',
+                '''. This tool supports MySQL 8.4.x only. ',
                 'Edit @target_version above (or pass -t <version> to mysql-precheck-run.sh).')
   END AS 'Target Version Check';
 
 SET @error_count = @error_count +
-  CASE WHEN @target_version REGEXP '^8\\.4\\.[0-9]$' THEN 0 ELSE 1 END;
+  CASE WHEN @target_version REGEXP '^8\\.4\\.[0-9]+$' THEN 0 ELSE 1 END;
 
 -- ============================================================
 -- Section: Privilege Pre-Checks
