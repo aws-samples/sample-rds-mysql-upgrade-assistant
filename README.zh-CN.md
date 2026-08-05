@@ -406,29 +406,35 @@ Discover all MySQL 8.0 instances
 
 ## Precheck 参考
 
-19 项检查涵盖 MySQL Shell + RDS PrePatchCompatibility：
+23 项检查涵盖 MySQL Shell + RDS PrePatchCompatibility + Aurora upgrade-prechecks：
 
 | # | 检查 | 严重性 | 说明 |
 |---|---|---|---|
 | 1 | removedSysVars | SKIP | RDS 处理参数清理 |
-| 2 | sysVarsNewDefaults | Warning | 8.4 中已变更的默认值 |
+| 2 | sysVarsNewDefaults | Warning | 8.4 中已变更的默认值（14 个变量） |
 | 3 | checkTableForUpgrade | Error | 损坏的视图、不兼容的类型（第二阶段） |
-| 4 | foreignKeyReferences | Warning | 外键引用非唯一/部分索引 |
-| 5 | authMethodUsage | Error/Warning | 已弃用的验证插件 |
+| 4 | foreignKeyReferences | Warning | 外键引用非唯一/部分索引（含跨 schema） |
+| 5 | authMethodUsage | Error/Warning | 已弃用的验证插件（主要 + MFA 因素） |
 | 6 | pluginUsage | Error/Warning | 已移除/已弃用的插件 |
-| 7 | deprecatedDefaultAuth | SKIP | RDS 管理默认验证 |
+| 7 | deprecatedDefaultAuth | SKIP/Warning | RDS: SKIP；Aurora: Warning（若使用 mysql_native_password） |
 | 8 | deprecatedRouterAuthMethod | SKIP | RDS 不使用 Router |
 | 9 | columnDefinition | Error | FLOAT/DOUBLE 搭配 AUTO_INCREMENT |
-| 10 | sysVarsAllowedValues | Warning | 8.4 中受限的值 |
-| 11 | invalidPrivileges | Notice | 已移除的权限 |
+| 10 | sysVarsAllowedValues | SKIP | RDS 参数组已强制允许的值 |
+| 11 | invalidPrivileges | Notice | 已移除的权限（直接 + 通过角色继承） |
 | 12 | partitionsWithPrefixKeys | Error | 前缀键分区 |
-| 13 | nonInclusiveLanguage | Warning | 非包容性用语 |
+| 13 | nonInclusiveLanguage | Error | 已移除的复制关键字（MASTER/SLAVE）在存储对象中 |
 | 14 | memcachedPlugin | Error | 已安装 daemon_memcached |
-| 15 | sysSchemaObjects | Error | sys 架构中的用户表 |
-| 16 | dollarSignName | Warning | 以 $ 开头的名称 |
-| 17 | reservedKeywords | Warning | FULL、INTERSECT 冲突 |
-| 18 | deprecatedTemporalDelimiter | Error | 已弃用的时间分隔符 |
-| 19 | spatialIndex | Warning | InnoDB 空间索引错误范围 |
+| 15 | sysSchemaObjects | Error | sys schema 中的用户表/视图、类型不匹配 |
+| 16 | dollarSignName | Warning | 以 $ 开头的名称（source < 8.0.31） |
+| 17 | reservedKeywords | Warning | FULL、INTERSECT、MANUAL、PARALLEL、QUALIFY、TABLESAMPLE |
+| 18 | deprecatedTemporalDelimiter | Error | 已弃用的时间分隔符（source < 8.0.29） |
+| 19 | spatialIndex | Warning | InnoDB 空间索引错误范围（8.0.3–8.0.40） |
+| 20 | auroraUnsupportedPlugins | Error | Aurora 专用：不在 8.4 允许列表的插件 |
+| 21 | auroraUnsupportedComponents | Error | Aurora 专用：不在 8.4 允许列表的组件 |
+| 22 | auroraValidatePasswordPlugin | Warning | Aurora 专用：旧版 plugin 形式的 validate_password |
+| 23 | auroraDuplicatedEnumValues | Error | Aurora 专用：ENUM 中大小写不敏感的重复值 |
+
+> 检查 #20–#23 仅在 Aurora MySQL v3 上执行。在 RDS for MySQL 上会自动跳过（零行、零计数）。
 
 ## 参考资料
 

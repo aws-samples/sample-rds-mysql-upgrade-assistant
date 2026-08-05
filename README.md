@@ -496,29 +496,35 @@ For each instance, the tool follows 10 steps:
 
 ## Precheck Reference
 
-19 checks covering MySQL Shell + RDS PrePatchCompatibility:
+23 checks covering MySQL Shell + RDS PrePatchCompatibility + Aurora upgrade-prechecks:
 
 | # | Check | Severity | Description |
 |---|---|---|---|
 | 1 | removedSysVars | SKIP | RDS handles parameter cleanup |
-| 2 | sysVarsNewDefaults | Warning | Changed defaults in 8.4 |
+| 2 | sysVarsNewDefaults | Warning | Changed defaults in 8.4 (14 variables) |
 | 3 | checkTableForUpgrade | Error | Corrupt views, incompatible types (Phase 2) |
-| 4 | foreignKeyReferences | Warning | FK referencing non-unique/partial indexes |
-| 5 | authMethodUsage | Error/Warning | Deprecated auth plugins |
+| 4 | foreignKeyReferences | Warning | FK referencing non-unique/partial indexes (incl. cross-schema) |
+| 5 | authMethodUsage | Error/Warning | Deprecated auth plugins (primary + MFA factors) |
 | 6 | pluginUsage | Error/Warning | Removed/deprecated plugins |
-| 7 | deprecatedDefaultAuth | SKIP | RDS manages default auth |
+| 7 | deprecatedDefaultAuth | SKIP/Warning | RDS: SKIP; Aurora: Warning if mysql_native_password |
 | 8 | deprecatedRouterAuthMethod | SKIP | RDS doesn't use Router |
 | 9 | columnDefinition | Error | FLOAT/DOUBLE with AUTO_INCREMENT |
-| 10 | sysVarsAllowedValues | Warning | Restricted values in 8.4 |
-| 11 | invalidPrivileges | Notice | Removed privileges |
+| 10 | sysVarsAllowedValues | SKIP | RDS parameter group enforces allowed values |
+| 11 | invalidPrivileges | Notice | Removed privileges (direct + role-inherited) |
 | 12 | partitionsWithPrefixKeys | Error | Prefix key partitions |
-| 13 | nonInclusiveLanguage | Warning | Non-inclusive terms |
+| 13 | nonInclusiveLanguage | Error | Removed replication keywords (MASTER/SLAVE) in stored objects |
 | 14 | memcachedPlugin | Error | daemon_memcached installed |
-| 15 | sysSchemaObjects | Error | User tables in sys schema |
-| 16 | dollarSignName | Warning | Names starting with $ |
-| 17 | reservedKeywords | Warning | FULL, INTERSECT conflicts |
-| 18 | deprecatedTemporalDelimiter | Error | Deprecated temporal delimiters |
-| 19 | spatialIndex | Warning | InnoDB spatial index bug range |
+| 15 | sysSchemaObjects | Error | User tables/views in sys schema, type mismatches |
+| 16 | dollarSignName | Warning | Names starting with $ (source < 8.0.31) |
+| 17 | reservedKeywords | Warning | FULL, INTERSECT, MANUAL, PARALLEL, QUALIFY, TABLESAMPLE |
+| 18 | deprecatedTemporalDelimiter | Error | Deprecated temporal delimiters (source < 8.0.29) |
+| 19 | spatialIndex | Warning | InnoDB spatial index bug range (8.0.3–8.0.40) |
+| 20 | auroraUnsupportedPlugins | Error | Aurora-only: plugins not on 8.4 allowlist |
+| 21 | auroraUnsupportedComponents | Error | Aurora-only: components not on 8.4 allowlist |
+| 22 | auroraValidatePasswordPlugin | Warning | Aurora-only: legacy plugin-form validate_password |
+| 23 | auroraDuplicatedEnumValues | Error | Aurora-only: case-insensitive duplicate ENUM values |
+
+> Checks #20–#23 only run on Aurora MySQL v3. On RDS for MySQL they are automatically skipped (zero rows, zero counts).
 
 ## References
 
