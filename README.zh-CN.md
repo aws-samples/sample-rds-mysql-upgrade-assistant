@@ -406,7 +406,9 @@ Discover all MySQL 8.0 instances
 
 ## Precheck 参考
 
-23 项检查涵盖 MySQL Shell + RDS PrePatchCompatibility + Aurora upgrade-prechecks：
+23 项检查涵盖 MySQL Shell + RDS PrePatchCompatibility + Aurora upgrade-prechecks。
+
+> **兼容性：** 预检逻辑对齐 MySQL Shell 9.7 `util.checkForServerUpgrade()`，以纯 SQL 实现（不需安装 MySQL Shell）。另外涵盖 MySQL Shell 没有的 RDS 专属检查（PrePatchCompatibility）和 Aurora 专属检查（upgrade-prechecks.log）。
 
 | # | 检查 | 严重性 | 说明 |
 |---|---|---|---|

@@ -496,7 +496,9 @@ For each instance, the tool follows 10 steps:
 
 ## Precheck Reference
 
-23 checks covering MySQL Shell + RDS PrePatchCompatibility + Aurora upgrade-prechecks:
+23 checks covering MySQL Shell + RDS PrePatchCompatibility + Aurora upgrade-prechecks.
+
+> **Compatibility:** The precheck logic is aligned with MySQL Shell 9.7 `util.checkForServerUpgrade()`, adapted for pure SQL execution (no MySQL Shell installation required). It additionally covers RDS-specific checks (PrePatchCompatibility) and Aurora-specific checks (upgrade-prechecks.log) not present in MySQL Shell.
 
 | # | Check | Severity | Description |
 |---|---|---|---|
