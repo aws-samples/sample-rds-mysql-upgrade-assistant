@@ -536,6 +536,7 @@ For each instance, the tool follows 10 steps:
 - [Parameter Group Migration Tool](https://github.com/awslabs/rds-support-tools/blob/main/rds-general/shell/migrate_param_group.sh)
 - [Secrets Manager Setup Guide](docs/secrets-manager-setup.md) — Step-by-step guide to store DB credentials securely
 - [FAQ](docs/faq.md) — Common questions about credentials, batch upgrades, Blue/Green, and troubleshooting
+- [Character Set Conversion to utf8mb4](docs/charset-conversion-utf8mb4.md) — Optional guide for converting charset during upgrade
 - [Remediation Playbook](docs/remediation-playbook.md) — Fix steps for each precheck finding
 - [Application Validation Template](scripts/validate/app_validate_template.sql) — Customize with your critical queries
 

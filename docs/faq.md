@@ -148,6 +148,9 @@ These would produce false positives in a managed environment.
 
 **Phase 2: Use caution** — `CHECK TABLE` acquires metadata locks. Consider running on a snapshot restore instead.
 
+### Q: Should I convert to utf8mb4 during the upgrade?
+**Not required**, but it's a good opportunity. The `utf8mb3` charset still works in MySQL 8.4 (deprecated but functional). If you want to convert, do it on the green environment after the version upgrade but before switchover. See [Character Set Conversion to utf8mb4](charset-conversion-utf8mb4.md) for the full process, including row size checks and replication settings.
+
 ---
 
 ## Kiro & MCP
@@ -208,6 +211,7 @@ export AWS_DEFAULT_REGION=us-west-2
 ## Related Documentation
 
 - [Secrets Manager Setup Guide](secrets-manager-setup.md)
+- [Character Set Conversion to utf8mb4](charset-conversion-utf8mb4.md)
 - [Remediation Playbook](remediation-playbook.md)
 - [IAM Policies Reference](iam-policies.json)
 - [Architecture Diagrams](architecture-diagrams.md)

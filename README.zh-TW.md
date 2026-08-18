@@ -446,6 +446,7 @@ Discover all MySQL 8.0 instances
 - [Parameter Group Migration Tool](https://github.com/awslabs/rds-support-tools/blob/main/rds-general/shell/migrate_param_group.sh)
 - [Secrets Manager 設定指南](docs/secrets-manager-setup.zh-TW.md) — 安全儲存資料庫密碼的完整步驟
 - [常見問題 FAQ](docs/faq.md) — 認證、批次升級、Blue/Green、故障排除常見問答
+- [Character Set 轉換至 utf8mb4](docs/charset-conversion-utf8mb4.md) — 升級時順便轉換字元集的選用指南
 - [修復手冊](docs/remediation-playbook.md) — 每項 precheck 發現的修復步驟
 - [應用程式驗證範本](scripts/validate/app_validate_template.sql) — 使用您的關鍵查詢進行自訂
 
