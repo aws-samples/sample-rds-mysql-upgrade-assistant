@@ -38,9 +38,17 @@ jobs:
           mkdir -p metrics
           DATE=$(date -u +%Y-%m-%d)
 
-          # Fetch traffic data (14-day windows; we snapshot today's totals)
-          CLONES=$(gh api "repos/$REPO/traffic/clones" 2>/dev/null || echo '{}')
-          VIEWS=$(gh api "repos/$REPO/traffic/views" 2>/dev/null || echo '{}')
+          # Fetch traffic data (14-day windows; we snapshot today's totals).
+          # Fail loudly if the API call errors — a silent '{}' fallback would
+          # produce a "green" run that writes no useful data.
+          CLONES=$(gh api "repos/$REPO/traffic/clones") || {
+            echo "ERROR: Failed to fetch clones. Check TRAFFIC_TOKEN has Administration:Read." >&2
+            exit 1
+          }
+          VIEWS=$(gh api "repos/$REPO/traffic/views") || {
+            echo "ERROR: Failed to fetch views. Check TRAFFIC_TOKEN has Administration:Read." >&2
+            exit 1
+          }
 
           # Extract the most recent day's counts (yesterday is the last complete day)
           CLONES_TOTAL=$(echo "$CLONES" | jq '.count // 0')
@@ -129,10 +137,12 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- metrics/; then
+          # Stage first, then check — git diff --quiet ignores untracked files,
+          # which would skip the very first snapshot (new files).
+          git add metrics/traffic_history.jsonl metrics/SUMMARY.md
+          if git diff --cached --quiet; then
             echo "No metric changes to commit."
             exit 0
           fi
-          git add metrics/traffic_history.jsonl metrics/SUMMARY.md
           git commit -m "chore: daily traffic snapshot $(date -u +%Y-%m-%d)"
           git push
